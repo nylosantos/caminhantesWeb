@@ -1,0 +1,15 @@
+{
+  "name": "Bolão Caminhantes",
+  "short_name": "Caminhantes",
+  "description": "Divirta-se jogando com os amigos.",
+  "start_url": "/",
+  "background_color": "#FFFFFF",
+  "theme_color": "#e5e7eb",
+  "icons": [
+    {
+      "src": "icon-256.png",
+      "sizes": "caminhantesIcon256.png",
+      "type": "image/png"
+    }
+  ]
+}
