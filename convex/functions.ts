@@ -1,14 +1,13 @@
-import { ParticipantsWithPoints } from '../src/screens/PoolPage';
-import { Doc, Id } from './_generated/dataModel';
-import { mutation, query } from './_generated/server';
-import { v } from 'convex/values';
+import { Doc, Id } from "./_generated/dataModel";
+import { mutation, query } from "./_generated/server";
+import { v } from "convex/values";
 
 export const findPoolToJoin = query({
   args: { leagueCode: v.string() },
   handler: async (ctx, args) => {
     const findLeague = await ctx.db
-      .query('leagues')
-      .filter((q) => q.eq(q.field('code'), args.leagueCode))
+      .query("leagues")
+      .filter((q) => q.eq(q.field("code"), args.leagueCode))
       .collect();
 
     return findLeague[0];
@@ -19,8 +18,8 @@ export const findLeagueWithSlug = query({
   args: { leagueSlug: v.string() },
   handler: async (ctx, args) => {
     const findLeague = await ctx.db
-      .query('leagues')
-      .filter((q) => q.and(q.eq(q.field('slug'), args.leagueSlug)))
+      .query("leagues")
+      .filter((q) => q.and(q.eq(q.field("slug"), args.leagueSlug)))
       .first();
 
     return findLeague;
@@ -31,11 +30,11 @@ export const findLeagueWithSlugAndCreator = query({
   args: { leagueSlug: v.string(), leagueCreatedBy: v.string() },
   handler: async (ctx, args) => {
     const findLeague = await ctx.db
-      .query('leagues')
+      .query("leagues")
       .filter((q) =>
         q.and(
-          q.eq(q.field('slug'), args.leagueSlug),
-          q.eq(q.field('createdBy'), args.leagueCreatedBy)
+          q.eq(q.field("slug"), args.leagueSlug),
+          q.eq(q.field("createdBy"), args.leagueCreatedBy)
         )
       )
       .first();
@@ -46,8 +45,8 @@ export const findLeagueWithSlugAndCreator = query({
 
 export const joinPool = mutation({
   args: {
-    leagueId: v.id('leagues'),
-    userId: v.id('users'),
+    leagueId: v.id("leagues"),
+    userId: v.id("users"),
     updatedLeagues: v.array(
       v.object({
         guesses: v.array(
@@ -59,7 +58,7 @@ export const joinPool = mutation({
             points: v.float64(),
           })
         ),
-        id: v.union(v.id('leagues'), v.null()),
+        id: v.union(v.id("leagues"), v.null()),
         totalPoints: v.float64(),
       })
     ),
@@ -67,20 +66,23 @@ export const joinPool = mutation({
   handler: async (ctx, args) => {
     const { leagueId, userId, updatedLeagues } = args;
     const leagueData = await ctx.db
-      .query('leagues')
-      .filter((q) => q.eq(q.field('_id'), leagueId))
+      .query("leagues")
+      .filter((q) => q.eq(q.field("_id"), leagueId))
       .first();
     if (leagueData) {
-      const leagueParticipantsData: (Id<'users'> | null)[] = leagueData.participants;
-      await ctx.db.patch(leagueId, { participants: [...leagueParticipantsData, userId] });
+      const leagueParticipantsData: (Id<"users"> | null)[] =
+        leagueData.participants;
+      await ctx.db.patch(leagueId, {
+        participants: [...leagueParticipantsData, userId],
+      });
 
       await ctx.db.patch(userId, {
         leagues: updatedLeagues,
       });
     }
     const user = await ctx.db
-      .query('users')
-      .filter((q) => q.eq(q.field('_id'), userId))
+      .query("users")
+      .filter((q) => q.eq(q.field("_id"), userId))
       .first();
     if (user) {
       const leagues = user.leagues;
@@ -102,11 +104,11 @@ export const createUser = mutation({
   handler: async (ctx, args) => {
     const { uid, displayName, email, phoneNumber, photoURL, role } = args;
     const userOrNull = await ctx.db
-      .query('users')
-      .filter((q) => q.eq(q.field('email'), email))
+      .query("users")
+      .filter((q) => q.eq(q.field("email"), email))
       .first();
     if (userOrNull === null) {
-      await ctx.db.insert('users', {
+      await ctx.db.insert("users", {
         id: uid,
         name: displayName,
         email: email,
@@ -116,7 +118,7 @@ export const createUser = mutation({
         role: role,
       });
     } else {
-      return 'User Exists';
+      return "User Exists";
     }
   },
 });
@@ -134,11 +136,11 @@ export const createLeague = mutation({
   handler: async (ctx, args) => {
     const { code, id, logoUrl, name, season, slug, createdBy } = args;
     const leagueOrNull = await ctx.db
-      .query('leagues')
-      .filter((q) => q.eq(q.field('slug'), slug))
+      .query("leagues")
+      .filter((q) => q.eq(q.field("slug"), slug))
       .first();
     if (leagueOrNull === null) {
-      await ctx.db.insert('leagues', {
+      await ctx.db.insert("leagues", {
         code,
         createdBy,
         games: [],
@@ -148,63 +150,33 @@ export const createLeague = mutation({
         participants: [],
         season,
         slug,
+        lastUpdatedPointsTime: new Date().toISOString(),
       });
     } else {
-      return console.log('League Exists');
+      return console.log("League Exists");
     }
   },
 });
 
 export const deleteLeague = mutation({
-  args: { id: v.id('leagues') },
+  args: { id: v.id("leagues") },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.id);
   },
 });
 
 export const findUser = query({
-  args: { id: v.optional(v.string()), type: v.union(v.literal('idString'), v.literal('_idDb')) },
+  args: {
+    id: v.optional(v.string()),
+    type: v.union(v.literal("idString"), v.literal("_idDb")),
+  },
   handler: async (ctx, args) => {
     const { id, type } = args;
     const userOrNull = await ctx.db
-      .query('users')
-      .filter((q) => q.eq(q.field(type === '_idDb' ? '_id' : 'id'), id))
+      .query("users")
+      .filter((q) => q.eq(q.field(type === "_idDb" ? "_id" : "id"), id))
       .first();
     return userOrNull;
-  },
-});
-
-export const findLeaguesParticipants = query({
-  args: {
-    leagueId: v.id('leagues'),
-  },
-  handler: async (ctx, args) => {
-    const leagueParticipants: ParticipantsWithPoints[] = [];
-    const { leagueId } = args;
-    const league = await ctx.db.get(leagueId);
-    if (league) {
-      for (let index = 0; index < league.participants.length; index++) {
-        if (league.participants[index]) {
-          const participantId = league.participants[index];
-          if (participantId) {
-            const participant = await ctx.db.get(participantId);
-            if (participant !== null) {
-              const userLeagueGuesses = participant.leagues.find(
-                (league) => league.id === leagueId
-              );
-              if (userLeagueGuesses) {
-                let totalPointsSum = 0;
-                userLeagueGuesses.guesses.map(
-                  (guess) => (totalPointsSum = totalPointsSum + guess.points)
-                );
-                leagueParticipants.push({ participant: participant, totalPoints: totalPointsSum });
-              }
-            }
-          }
-        }
-      }
-      return leagueParticipants;
-    }
   },
 });
 
@@ -222,7 +194,7 @@ export const getUserPools = query({
               points: v.float64(),
             })
           ),
-          id: v.union(v.id('leagues'), v.null()),
+          id: v.union(v.id("leagues"), v.null()),
           totalPoints: v.float64(),
         })
       ),
@@ -231,12 +203,12 @@ export const getUserPools = query({
   },
   handler: async (ctx, args) => {
     const { leagues } = args;
-    const userLeagues: Doc<'leagues'>[] = [];
+    const userLeagues: Doc<"leagues">[] = [];
     if (leagues !== null) {
       for (let index = 0; index < leagues.length; index++) {
         const foundedLeague = await ctx.db
-          .query('leagues')
-          .filter((q) => q.eq(q.field('_id'), leagues[index].id))
+          .query("leagues")
+          .filter((q) => q.eq(q.field("_id"), leagues[index].id))
           .first();
         if (foundedLeague) {
           userLeagues.push(foundedLeague);
@@ -248,15 +220,17 @@ export const getUserPools = query({
 });
 
 export const getUserPoolGuesses = query({
-  args: { leagueId: v.id('leagues'), userId: v.id('users') },
+  args: { leagueId: v.id("leagues"), userId: v.id("users") },
   handler: async (ctx, args) => {
     const { leagueId, userId } = args;
     const userData = await ctx.db
-      .query('users')
-      .filter((q) => q.eq(q.field('_id'), userId))
+      .query("users")
+      .filter((q) => q.eq(q.field("_id"), userId))
       .first();
     if (userData && userData.leagues) {
-      const userLeagueGuesses = userData.leagues.find((league) => league.id === leagueId);
+      const userLeagueGuesses = userData.leagues.find(
+        (league) => league.id === leagueId
+      );
       if (userLeagueGuesses) {
         return userLeagueGuesses.guesses;
       }
@@ -276,17 +250,17 @@ export const updateDbUserGuesses = mutation({
           points: v.float64(),
         })
       ),
-      id: v.union(v.id('leagues'), v.null()),
+      id: v.union(v.id("leagues"), v.null()),
       totalPoints: v.float64(),
     }),
-    userId: v.id('users'),
+    userId: v.id("users"),
   },
   handler: async (ctx, args) => {
     const { league, userId } = args;
     if (league !== null && userId !== null) {
       const userData = await ctx.db
-        .query('users')
-        .filter((q) => q.eq(q.field('_id'), userId))
+        .query("users")
+        .filter((q) => q.eq(q.field("_id"), userId))
         .first();
       if (userData) {
         const arrayChangedIndex = userData.leagues.findIndex(
@@ -315,7 +289,7 @@ export const updateDbUserGuesses = mutation({
 export const updateOneGuess = mutation({
   args: {
     guess: v.object({
-      leagueId: v.id('leagues'),
+      leagueId: v.id("leagues"),
       guess: v.object({
         AwayTeamScore: v.union(v.null(), v.float64()),
         HomeTeamScore: v.union(v.null(), v.float64()),
@@ -324,13 +298,13 @@ export const updateOneGuess = mutation({
         points: v.float64(),
       }),
     }),
-    userId: v.id('users'),
+    userId: v.id("users"),
   },
   handler: async (ctx, args) => {
     const { guess, userId } = args;
     const userData = await ctx.db
-      .query('users')
-      .filter((q) => q.eq(q.field('_id'), userId))
+      .query("users")
+      .filter((q) => q.eq(q.field("_id"), userId))
       .first();
     if (userData) {
       const arrayChangedIndex = userData.leagues.findIndex(
@@ -344,9 +318,11 @@ export const updateOneGuess = mutation({
           (league) => league.id === guess.leagueId
         );
         if (leagueGuessesToChange) {
-          const guessesOfLeagueWithoutChange = leagueGuessesToChange.guesses.filter(
-            (otherGuesses) => otherGuesses.MatchNumber !== guess.guess.MatchNumber
-          );
+          const guessesOfLeagueWithoutChange =
+            leagueGuessesToChange.guesses.filter(
+              (otherGuesses) =>
+                otherGuesses.MatchNumber !== guess.guess.MatchNumber
+            );
           await ctx.db.patch(userId, {
             leagues: [
               ...leagueGuessesWithoutChange,
@@ -363,10 +339,66 @@ export const updateOneGuess = mutation({
   },
 });
 
+export const updateLeagueLastUpdateTime = mutation({
+  args: {
+    leagueId: v.id("leagues"),
+  },
+  handler: async (ctx, args) => {
+    const { leagueId } = args;
+    const leagueData = await ctx.db
+      .query("leagues")
+      .filter((q) => q.eq(q.field("_id"), leagueId))
+      .first();
+    if (leagueData) {
+      await ctx.db.patch(leagueId, {
+        lastUpdatedPointsTime: new Date().toISOString(),
+      });
+    }
+  },
+});
+
+export const updateOneFixture = mutation({
+  args: {
+    leagueId: v.id("leagues"),
+    fixture: v.object({
+      AwayTeam: v.string(),
+      AwayTeamScore: v.union(v.null(), v.float64()),
+      DateUtc: v.string(),
+      Group: v.union(v.null(), v.string()),
+      HomeTeam: v.string(),
+      HomeTeamScore: v.union(v.null(), v.float64()),
+      Location: v.string(),
+      MatchNumber: v.float64(),
+      RoundNumber: v.float64(),
+      active: v.optional(v.boolean()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const { fixture, leagueId } = args;
+    const leagueData = await ctx.db
+      .query("leagues")
+      .filter((q) => q.eq(q.field("_id"), leagueId))
+      .first();
+    if (leagueData) {
+      const arrayChangedIndex = leagueData.games.findIndex(
+        (game) => game.MatchNumber === fixture.MatchNumber
+      );
+      if (arrayChangedIndex !== -1) {
+        const fixturesWithoutChange = leagueData.games.filter(
+          (otherGames) => otherGames.MatchNumber !== fixture.MatchNumber
+        );
+        await ctx.db.patch(leagueId, {
+          games: [...fixturesWithoutChange, fixture],
+        });
+      }
+    }
+  },
+});
+
 export const listLeagues = query({
   args: {},
   handler: async (ctx) => {
-    const leagues = await ctx.db.query('leagues').collect();
+    const leagues = await ctx.db.query("leagues").collect();
     return leagues;
   },
 });
@@ -374,7 +406,7 @@ export const listLeagues = query({
 export const listUsers = query({
   args: {},
   handler: async (ctx) => {
-    const users = await ctx.db.query('users').collect();
+    const users = await ctx.db.query("users").collect();
     return users;
   },
 });

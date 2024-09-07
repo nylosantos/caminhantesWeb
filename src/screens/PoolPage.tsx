@@ -3,7 +3,7 @@ import { Container } from "../components/Container";
 import { Separator } from "../components/Separator";
 import { Participants } from "../components/Participants";
 import { PoolMenu } from "../components/PoolMenu";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { SelectFixtures } from "../components/SelectFixtures";
 import { FixturesProps, GlobalDataContextType } from "../@types";
 import { GlobalDataContext } from "../context/GlobalDataContext";
@@ -50,6 +50,8 @@ export default function PoolPage({ userData }: PageProps) {
   const [participantsData, setParticipantsData] =
     useState<ParticipantsWithPoints[]>();
 
+  const inputResults = useRef<FixturesProps[]>();
+
   useEffect(() => {
     if (userData && competition && isMyGuesses) {
       const emptyGuesses = [];
@@ -78,6 +80,7 @@ export default function PoolPage({ userData }: PageProps) {
         setFilledGuesses(false);
       }
     }
+    inputResults.current = fixturesToShow;
   }, [fixturesToShow]);
 
   // CUSTOMIZE HEADER AND FOOTER
@@ -140,20 +143,162 @@ export default function PoolPage({ userData }: PageProps) {
     }
   }
 
-  async function getLeagueAndParticipantsData() {
-    if (competition) {
-      const result = await convex.query(api.functions.findLeaguesParticipants, {
-        leagueId: competition._id,
-      });
+  async function updateResult(item: FixturesProps) {
+    if (inputResults.current !== undefined) {
+      const fixture = inputResults.current.find(
+        (fixtureResult) => fixtureResult.MatchNumber === item.MatchNumber
+      );
 
-      if (result) {
-        setParticipantsData(result);
+      if (fixture) {
+        ConfirmationAlert.fire({
+          title: "Você tem certeza?",
+          text: "Confira o resultado pois pra mudar depois será uma bagunça, e diretamente no banco de dados!",
+          icon: "warning",
+          showCancelButton: true,
+          cancelButtonColor: "#d33",
+          confirmButtonColor: "#0d9488",
+          confirmButtonText: "Sim, confirmar!",
+        }).then(async (result) => {
+          if (result.isConfirmed) {
+            if (
+              fixture.HomeTeamScore === null ||
+              fixture.AwayTeamScore === null ||
+              isNaN(fixture.HomeTeamScore) === true ||
+              isNaN(fixture.AwayTeamScore) === true
+            ) {
+              return toast.error(
+                `Resultado inválido, verifique o jogo ${item.HomeTeam} vs ${item.AwayTeam}`
+              );
+            } else {
+              convex
+                .mutation(api.functions.updateOneFixture, {
+                  leagueId: competition!._id,
+                  fixture: fixture,
+                })
+                .then(() => {
+                  toast.success("Palpite enviado! Agora é torcer! 👌");
+                });
+            }
+          } else {
+            return toast.warning(
+              "Parabéns por pensar um pouco mais... Afinal, que quem nunca leu errado e vacilou atualizando o banco de dados? 😂😂😂 #brinks"
+            );
+          }
+        });
+      } else {
+        console.log(
+          "Não achou uma partida correspondente no banco de dados para atualizar (inputResults.current): ",
+          inputResults.current
+        );
+        return toast.error(
+          "Não foi possível computar o resultado, verifique os logs no console... 🤯"
+        );
+      }
+    } else {
+      console.log(
+        "inputResults === undefined (inputResults.current): ",
+        inputResults.current
+      );
+      return toast.error(
+        "Não foi possível computar o resultado, verifique os logs no console... 🤯"
+      );
+    }
+  }
+
+  // VALUE INPUT SCORE FUNCTION
+  function handleValueFixtureInputScore(
+    item: FixturesProps,
+    teamLocation: "home" | "away"
+  ) {
+    if (teamLocation === "home") {
+      return handleScoreFixture(item.MatchNumber, "home");
+    } else {
+      return handleScoreFixture(item.MatchNumber, "away");
+    }
+  }
+
+  // UPDATE STATE AND FILL INPUT FUNCTION
+  function handleScoreFixture(
+    matchNumber: number,
+    teamLocation: "home" | "away"
+  ) {
+    if (inputResults.current) {
+      const scoreFixture = inputResults.current.find((fixture) => {
+        if (fixture.MatchNumber === matchNumber) {
+          return fixture;
+        } else {
+          return "";
+        }
+      });
+      if (teamLocation === "home") {
+        return scoreFixture?.HomeTeamScore?.toString();
+      } else {
+        return scoreFixture?.AwayTeamScore?.toString();
       }
     }
   }
 
+  // UPDATE GUESSES STATE FUNCTION
+  function updateStateFixtures(
+    matchNumber: number,
+    teamLocation: "home" | "away",
+    score: string
+  ) {
+    if (inputResults.current) {
+      inputResults.current = inputResults.current.map((fixture) => {
+        if (fixture.MatchNumber === matchNumber) {
+          if (teamLocation === "home") {
+            if (score === null || score === "") {
+              return { ...fixture, HomeTeamScore: null };
+            } else {
+              return { ...fixture, HomeTeamScore: Number(score) };
+            }
+          } else {
+            if (score === null || score === "") {
+              return { ...fixture, AwayTeamScore: null };
+            } else {
+              return { ...fixture, AwayTeamScore: Number(score) };
+            }
+          }
+        } else {
+          return fixture;
+        }
+      });
+    }
+  }
+
+  async function getLeagueAndParticipantsData() {
+    const leagueParticipants: ParticipantsWithPoints[] = [];
+    if (competition) {
+      for (let index = 0; index < competition.participants.length; index++) {
+        if (competition.participants[index]) {
+          const participantId = competition.participants[index];
+          if (participantId) {
+            const participant = await convex.query(api.functions.findUser, {
+              id: participantId,
+              type: "_idDb",
+            });
+            if (participant !== null) {
+              const userLeagueGuesses = participant.leagues.find(
+                (userLeague) => userLeague.id === competition._id
+              );
+              if (userLeagueGuesses) {
+                leagueParticipants.push({
+                  participant: participant,
+                  totalPoints: userLeagueGuesses.totalPoints,
+                });
+              }
+            }
+          }
+        }
+      }
+
+      setParticipantsData(leagueParticipants);
+    }
+  }
+
   useEffect(() => {
-    getLeagueAndParticipantsData();
+    // getLeagueAndParticipantsData();
     toggleGuessesResultsRanking("guesses");
   }, []);
 
@@ -486,214 +631,287 @@ export default function PoolPage({ userData }: PageProps) {
           </div>
         ) : (
           <div className="mt-48 flex w-full flex-col">
-            {fixturesToShow.map((item) => (
-              <div
-                className={`mb-3 flex w-full flex-col items-center justify-center rounded-md border-b-2 ${chooseBorderBgCardColor(
-                  item.HomeTeam,
-                  item.AwayTeam
-                )}`}
-                key={uuidV4()}
-              >
-                {/* TEAMS AND DATE */}
-                <div className="my-4 flex w-full flex-col">
-                  <p
-                    className={`w-full text-center text-sm font-bold ${chooseTextCardColor(
-                      item.HomeTeam,
-                      item.AwayTeam
-                    )}`}
-                  >
-                    {item.HomeTeam} vs {item.AwayTeam}
-                  </p>
-                  <p
-                    className={`w-full text-center text-xs ${chooseTextCardColor(
-                      item.HomeTeam,
-                      item.AwayTeam
-                    )}`}
-                  >
-                    {`${item.Location}, ${formatInTimeZone(
-                      item.DateUtc,
-                      "America/Sao_Paulo",
-                      "dd 'de' MMMM 'de' yyyy 'às' HH:mm",
-                      { locale: ptBR }
-                    )}`}
-                  </p>
-                </div>
-                {/* TEAMS BADGES AND SCORE INPUT */}
-                <div className="mb-4 flex w-full flex-row items-center justify-center">
-                  <div className="flex w-full flex-row items-center justify-center">
-                    <div className="flex flex-row items-center justify-end">
-                      <div className="flex flex-row items-center gap-2 px-2">
-                        <div className="flex flex-row items-center">
-                          {competition!._id ===
-                          "jh700qq9t47yv0wxf7bzb0dmmd7030hv"
-                            ? getCountryFlag(item.HomeTeam)
-                            : handleClubBadge(item.HomeTeam)}
-                        </div>
-                      </div>
-                      <input
-                        hidden={
-                          new Date(item.DateUtc) > new Date()
-                            ? isMyGuesses
-                              ? false
-                              : true
-                            : isMyGuesses
-                              ? getUserMatchPoints(item)
-                                  .messageIfGuessIsNull ===
-                                "Palpite não enviado"
-                                ? true
-                                : false
-                              : false
-                        }
-                        className={`${
-                          isMyGuesses
-                            ? getUserMatchPoints(item).messageIfGuessIsNull ===
-                              "Palpite não enviado"
-                              ? new Date(item.DateUtc) < new Date()
-                                ? "bg-transparent" // IF GAME WAS STARTED
-                                : "bg-gray-300" // IF GAME WASN'T START YET
-                              : "bg-gray-300" // IF GUESS WAS SEND
-                            : new Date(item.DateUtc) > new Date() // IF IS ON A RESULTS SCREEN
-                              ? "bg-transparent" // IF GAME WASN'T START YET
-                              : "bg-gray-300" // IF GAME WAS STARTED
-                        } h-10 w-10 rounded text-center text-gray-950 outline-none`}
-                        type="text"
-                        id="home-score"
-                        value={handleValueInputScore(item, "home")}
-                        onChange={(event) => {
-                          updateStateGuesses(
-                            item.MatchNumber,
-                            "home",
-                            event.target.value
-                              .replace(/[^0-9.]/g, "")
-                              .replace(/(\..*?)\..*/g, "$1")
-                          );
-                        }}
-                        readOnly={
-                          !isMyGuesses
-                            ? true
-                            : new Date(item.DateUtc) < new Date()
-                        }
-                      />
-                    </div>
-                    {/* TEAM SEPARATOR: '-' or 'vs' */}
-                    <p className="px-1 text-center text-gray-500">
-                      {
-                        isMyGuesses
-                          ? getUserMatchPoints(item).messageIfGuessIsNull ===
-                            "Palpite não enviado"
-                            ? new Date(item.DateUtc) < new Date()
-                              ? "vs" // IF GAME WAS STARTED
-                              : "-" // IF GAME WASN'T START YET
-                            : "-" // IF GUESS WAS SEND
-                          : new Date(item.DateUtc) < new Date() // IF IS ON A RESULTS SCREEN
-                            ? "-" // IF GAME WAS STARTED
-                            : "vs" // IF GAME WASN'T START YET
-                      }
+            {fixturesToShow
+              .sort((a, b) => {
+                if (a.DateUtc === b.DateUtc) {
+                  return a.MatchNumber - b.MatchNumber;
+                } else {
+                  return Number(new Date(a.DateUtc) < new Date(b.DateUtc));
+                }
+
+                if (new Date(a.DateUtc) < new Date(b.DateUtc)) {
+                  console.log(new Date(a.DateUtc) < new Date(b.DateUtc));
+                  return -1;
+                }
+                if (new Date(a.DateUtc) > new Date(b.DateUtc)) {
+                  console.log(new Date(a.DateUtc) > new Date(b.DateUtc));
+                  return -1;
+                }
+                if (b.MatchNumber - a.MatchNumber) {
+                  console.log(b.MatchNumber - a.MatchNumber);
+                  return -1;
+                }
+                return 0;
+              })
+              .map((item) => (
+                <div
+                  className={`mb-3 flex w-full flex-col items-center justify-center rounded-md border-b-2 ${chooseBorderBgCardColor(
+                    item.HomeTeam,
+                    item.AwayTeam
+                  )}`}
+                  key={uuidV4()}
+                >
+                  {/* TEAMS AND DATE */}
+                  <div className="my-4 flex w-full flex-col">
+                    <p
+                      className={`w-full text-center text-sm font-bold ${chooseTextCardColor(
+                        item.HomeTeam,
+                        item.AwayTeam
+                      )}`}
+                    >
+                      {item.HomeTeam} vs {item.AwayTeam}
                     </p>
-                    <div className="flex flex-row items-center justify-start">
-                      <input
-                        hidden={
-                          new Date(item.DateUtc) > new Date()
-                            ? isMyGuesses
-                              ? false
-                              : true
-                            : isMyGuesses
+                    <p
+                      className={`w-full text-center text-xs ${chooseTextCardColor(
+                        item.HomeTeam,
+                        item.AwayTeam
+                      )}`}
+                    >
+                      {`${item.Location}, ${formatInTimeZone(
+                        item.DateUtc,
+                        "America/Sao_Paulo",
+                        "dd 'de' MMMM 'de' yyyy 'às' HH:mm",
+                        { locale: ptBR }
+                      )}`}
+                    </p>
+                  </div>
+                  {/* TEAMS BADGES AND SCORE INPUT */}
+                  <div className="mb-4 flex w-full flex-row items-center justify-center">
+                    <div className="flex w-full flex-row items-center justify-center">
+                      <div className="flex flex-row items-center justify-end">
+                        <div className="flex flex-row items-center gap-2 px-2">
+                          <div className="flex flex-row items-center">
+                            {competition!._id ===
+                            "jh700qq9t47yv0wxf7bzb0dmmd7030hv"
+                              ? getCountryFlag(item.HomeTeam)
+                              : handleClubBadge(item.HomeTeam)}
+                          </div>
+                        </div>
+                        <input
+                          hidden={
+                            !isMyGuesses
+                              ? false // IF IS ON A RESULTS SCREEN
+                              : new Date(item.DateUtc) > new Date()
+                                ? false // IF GAME WASN'T START YET
+                                : getUserMatchPoints(item) // IF GAME WAS STARTED
+                                      .messageIfGuessIsNull ===
+                                    "Palpite não enviado"
+                                  ? true // IF GUESS WASN'T SEND
+                                  : false // IF GUESS WAS SEND
+                          }
+                          className={`${
+                            isMyGuesses
                               ? getUserMatchPoints(item)
                                   .messageIfGuessIsNull ===
                                 "Palpite não enviado"
-                                ? true
-                                : false
-                              : false
-                        }
-                        className={`${
+                                ? new Date(item.DateUtc) < new Date()
+                                  ? "bg-transparent" // IF GAME WAS STARTED
+                                  : "bg-gray-300" // IF GAME WASN'T START YET
+                                : "bg-gray-300" // IF GUESS WAS SEND
+                              : "bg-gray-300" // IF IS ON A RESULTS SCREEN
+                          } h-10 w-10 rounded text-center text-gray-950 outline-none`}
+                          type="text"
+                          id="home-score"
+                          value={
+                            isMyGuesses
+                              ? handleValueInputScore(item, "home")
+                              : handleValueFixtureInputScore(item, "home")
+                          }
+                          onChange={(event) => {
+                            const score = event.target.value
+                              .replace(/[^0-9.]/g, "")
+                              .replace(/(\..*?)\..*/g, "$1");
+                            if (isMyGuesses) {
+                              updateStateGuesses(
+                                item.MatchNumber,
+                                "home",
+                                score
+                              );
+                            } else {
+                              updateStateFixtures(
+                                item.MatchNumber,
+                                "home",
+                                score
+                              );
+                            }
+                          }}
+                          readOnly={
+                            !isMyGuesses
+                              ? handleValueFixtureInputScore(item, "home") ===
+                                undefined
+                                ? false
+                                : true
+                              : new Date(item.DateUtc) < new Date()
+                          }
+                        />
+                      </div>
+                      {/* TEAM SEPARATOR: '-' or 'vs' */}
+                      <p className="px-1 text-center text-gray-500">
+                        {
                           isMyGuesses
                             ? getUserMatchPoints(item).messageIfGuessIsNull ===
                               "Palpite não enviado"
                               ? new Date(item.DateUtc) < new Date()
-                                ? "bg-transparent" // IF GAME WAS STARTED
-                                : "bg-gray-300" // IF GAME WASN'T START YET
-                              : "bg-gray-300" // IF GUESS WAS SEND
-                            : new Date(item.DateUtc) > new Date() // IF IS ON A RESULTS SCREEN
-                              ? "bg-transparent" // IF GAME WASN'T START YET
-                              : "bg-gray-300" // IF GAME WAS STARTED
-                        } h-10 w-10 rounded text-center text-gray-950 outline-none`}
-                        type="text"
-                        id="away-score"
-                        value={handleValueInputScore(item, "away")}
-                        onChange={(event) => {
-                          const score = event.target.value
-                            .replace(/[^0-9.]/g, "")
-                            .replace(/(\..*?)\..*/g, "$1");
-                          updateStateGuesses(item.MatchNumber, "away", score);
-                        }}
-                        readOnly={
-                          !isMyGuesses
-                            ? true
-                            : new Date(item.DateUtc) < new Date()
+                                ? "vs" // IF GAME WAS STARTED
+                                : "-" // IF GAME WASN'T START YET
+                              : "-" // IF GUESS WAS SEND
+                            : "-" // IF IS ON A RESULTS SCREEN
                         }
-                      />
-                      <div className="flex flex-row items-center gap-2 px-2">
-                        <div className="flex flex-row items-center">
-                          {competition!._id ===
-                          "jh700qq9t47yv0wxf7bzb0dmmd7030hv"
-                            ? getCountryFlag(item.AwayTeam)
-                            : handleClubBadge(item.AwayTeam)}
+                      </p>
+                      <div className="flex flex-row items-center justify-start">
+                        <input
+                          hidden={
+                            !isMyGuesses
+                              ? false // IF IS ON A RESULTS SCREEN
+                              : new Date(item.DateUtc) > new Date()
+                                ? false // IF GAME WASN'T START YET
+                                : getUserMatchPoints(item) // IF GAME WAS STARTED
+                                      .messageIfGuessIsNull ===
+                                    "Palpite não enviado"
+                                  ? true // IF GUESS WASN'T SEND
+                                  : false // IF GUESS WAS SEND
+                          }
+                          className={`${
+                            isMyGuesses
+                              ? getUserMatchPoints(item)
+                                  .messageIfGuessIsNull ===
+                                "Palpite não enviado"
+                                ? new Date(item.DateUtc) < new Date()
+                                  ? "bg-transparent" // IF GAME WAS STARTED
+                                  : "bg-gray-300" // IF GAME WASN'T START YET
+                                : "bg-gray-300" // IF GUESS WAS SEND
+                              : "bg-gray-300" // IF IS ON A RESULTS SCREEN
+                          } h-10 w-10 rounded text-center text-gray-950 outline-none`}
+                          type="text"
+                          id="away-score"
+                          value={
+                            isMyGuesses
+                              ? handleValueInputScore(item, "away")
+                              : handleValueFixtureInputScore(item, "away")
+                          }
+                          onChange={(event) => {
+                            const score = event.target.value
+                              .replace(/[^0-9.]/g, "")
+                              .replace(/(\..*?)\..*/g, "$1");
+                            if (isMyGuesses) {
+                              updateStateGuesses(
+                                item.MatchNumber,
+                                "away",
+                                score
+                              );
+                            } else {
+                              updateStateFixtures(
+                                item.MatchNumber,
+                                "away",
+                                score
+                              );
+                            }
+                          }}
+                          readOnly={
+                            !isMyGuesses
+                              ? handleValueFixtureInputScore(item, "away") ===
+                                undefined
+                                ? false
+                                : true
+                              : new Date(item.DateUtc) < new Date()
+                          }
+                        />
+                        <div className="flex flex-row items-center gap-2 px-2">
+                          <div className="flex flex-row items-center">
+                            {competition!._id ===
+                            "jh700qq9t47yv0wxf7bzb0dmmd7030hv"
+                              ? getCountryFlag(item.AwayTeam)
+                              : handleClubBadge(item.AwayTeam)}
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-                {/* USER POINTS */}
-                {listToShow === "guesses" ? (
-                  <div className="mb-4 flex w-full flex-col items-center justify-center px-4">
-                    {new Date(item.DateUtc) > new Date() ? (
-                      handleValueInputScore(item, "home") === undefined ||
-                      handleValueInputScore(item, "away") === undefined ? (
+                  {/* USER POINTS */}
+                  {listToShow === "guesses" ? (
+                    <div className="mb-4 flex w-full flex-col items-center justify-center px-4">
+                      {new Date(item.DateUtc) > new Date() ? (
+                        handleValueInputScore(item, "home") === undefined ||
+                        handleValueInputScore(item, "away") === undefined ? (
+                          <button
+                            className="flex w-full items-center justify-center gap-2 rounded bg-red-600 px-2 py-1 outline-none"
+                            onClick={() => updateGuess(item)}
+                          >
+                            <p className="text-xs font-semibold uppercase text-gray-100">
+                              Enviar Palpite ?
+                            </p>
+                          </button>
+                        ) : (
+                          <div className="flex w-full items-center justify-center gap-2 rounded bg-green-600 px-2 py-1 outline-none">
+                            <p className="text-xs font-semibold uppercase text-gray-100">
+                              Palpite Enviado
+                            </p>
+                            <FaCheck className="text-gray-100" size={10} />
+                          </div>
+                        )
+                      ) : getUserMatchPoints(item).messageIfGuessIsNull ===
+                        "Palpite não enviado" ? (
+                        // <p className="text-center text-xs text-gray-950">
+                        //   Partida iniciada, não é possível palpitar
+                        // </p>
+                        <div className="flex w-full items-center justify-center gap-2 rounded bg-gray-400/70 px-2 py-1 outline-none">
+                          <p className="text-xs font-semibold uppercase text-gray-100">
+                            Partida iniciada, não é possível palpitar
+                          </p>
+                        </div>
+                      ) : (
+                        // <p className="text-center text-xs font-semibold text-gray-950">Faça já o seu palpite</p>
+
+                        <div className="flex w-full items-center justify-center gap-2 rounded bg-teal-600 px-2 py-1 outline-none">
+                          <p className="text-center text-xs font-semibold uppercase text-gray-100">
+                            {getUserMatchPoints(item).messageIfGuessIsNull ===
+                            ""
+                              ? getUserMatchPoints(item).points > 1
+                                ? `Pontuação: ${getUserMatchPoints(item).points} pontos`
+                                : getUserMatchPoints(item).points === 1
+                                  ? `Pontuação: ${getUserMatchPoints(item).points} ponto`
+                                  : `Pontuação: 0`
+                              : `Pontuação: 0`}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : userData?.role === "admin" ? (
+                    <div className="mb-4 flex w-full flex-col items-center justify-center px-4">
+                      {handleValueFixtureInputScore(item, "home") ===
+                        undefined ||
+                      handleValueFixtureInputScore(item, "away") ===
+                        undefined ? (
                         <button
                           className="flex w-full items-center justify-center gap-2 rounded bg-red-600 px-2 py-1 outline-none"
-                          onClick={() => updateGuess(item)}
+                          onClick={() => updateResult(item)}
                         >
                           <p className="text-xs font-semibold uppercase text-gray-100">
-                            Enviar Palpite ?
+                            Atualizar Resultado ?
                           </p>
                         </button>
                       ) : (
                         <div className="flex w-full items-center justify-center gap-2 rounded bg-green-600 px-2 py-1 outline-none">
                           <p className="text-xs font-semibold uppercase text-gray-100">
-                            Palpite Enviado
+                            Resultado Atualizado
                           </p>
                           <FaCheck className="text-gray-100" size={10} />
                         </div>
-                      )
-                    ) : getUserMatchPoints(item).messageIfGuessIsNull ===
-                      "Palpite não enviado" ? (
-                      // <p className="text-center text-xs text-gray-950">
-                      //   Partida iniciada, não é possível palpitar
-                      // </p>
-                      <div className="flex w-full items-center justify-center gap-2 rounded bg-gray-400/70 px-2 py-1 outline-none">
-                        <p className="text-xs font-semibold uppercase text-gray-100">
-                          Partida iniciada, não é possível palpitar
-                        </p>
-                      </div>
-                    ) : (
-                      // <p className="text-center text-xs font-semibold text-gray-950">Faça já o seu palpite</p>
-
-                      <div className="flex w-full items-center justify-center gap-2 rounded bg-teal-600 px-2 py-1 outline-none">
-                        <p className="text-center text-xs font-semibold uppercase text-gray-100">
-                          {getUserMatchPoints(item).messageIfGuessIsNull === ""
-                            ? getUserMatchPoints(item).points > 1
-                              ? `Pontuação: ${getUserMatchPoints(item).points} pontos`
-                              : getUserMatchPoints(item).points === 1
-                                ? `Pontuação: ${getUserMatchPoints(item).points} ponto`
-                                : `Pontuação: 0`
-                            : `Pontuação: 0`}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ) : null}
-              </div>
-            ))}
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
           </div>
         )}
       </>

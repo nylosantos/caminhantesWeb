@@ -607,23 +607,30 @@ export const GlobalDataProvider = ({ children }: PostsContextProviderProps) => {
           const userGuessesFixturesOrdered = userGuessesFixtures.sort(
             (a, b) => a.MatchNumber - b.MatchNumber
           );
+          const selectedFixturesOrdered = selectedFixtures.sort(
+            (a, b) => a.MatchNumber - b.MatchNumber
+          );
           userGuessesFixturesOrdered.map((fixture, index) => {
             if (
-              selectedFixtures[index] &&
-              selectedFixtures[index].RoundNumber === roundSelected
+              selectedFixturesOrdered[index] &&
+              selectedFixturesOrdered[index].RoundNumber === roundSelected
             ) {
-              fixturesArray.push(selectedFixtures[index]);
+              fixturesArray.push(selectedFixturesOrdered[index]);
               guessesArray.push({
-                MatchNumber: selectedFixtures[index].MatchNumber,
+                MatchNumber: selectedFixturesOrdered[index].MatchNumber,
                 HomeTeamScore: fixture.HomeTeamScore,
                 AwayTeamScore: fixture.AwayTeamScore,
-                RoundNumber: selectedFixtures[index].RoundNumber,
+                RoundNumber: selectedFixturesOrdered[index].RoundNumber,
                 points: 0,
               });
             }
           });
           const orderedFixturesArray = fixturesArray.sort(function (a, b) {
-            return Number(new Date(a.DateUtc) < new Date(b.DateUtc));
+            if (a.DateUtc === b.DateUtc) {
+              return a.MatchNumber - b.MatchNumber;
+            } else {
+              return Number(new Date(a.DateUtc) < new Date(b.DateUtc));
+            }
           });
           setFixturesToShow(orderedFixturesArray);
           setLoading(false);
@@ -694,22 +701,10 @@ export const GlobalDataProvider = ({ children }: PostsContextProviderProps) => {
     item: FixturesProps,
     teamLocation: "home" | "away"
   ) {
-    if (!isMyGuesses) {
-      if (item.HomeTeamScore !== null && item.AwayTeamScore !== null) {
-        if (teamLocation === "home") {
-          return item.HomeTeamScore.toString();
-        } else {
-          return item.AwayTeamScore.toString();
-        }
-      } else {
-        return "";
-      }
+    if (teamLocation === "home") {
+      return handleScoreGuess(item.MatchNumber, "home");
     } else {
-      if (teamLocation === "home") {
-        return handleScoreGuess(item.MatchNumber, "home");
-      } else {
-        return handleScoreGuess(item.MatchNumber, "away");
-      }
+      return handleScoreGuess(item.MatchNumber, "away");
     }
   }
 

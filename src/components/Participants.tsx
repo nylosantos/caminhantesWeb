@@ -21,11 +21,31 @@ export const Participants = ({ league }: ParticipantsProps) => {
   const [imgSrc, setImgSrc] = useState<(string | null)[]>([]);
 
   async function getLeagueParticipants() {
-    const result = await convex.query(api.functions.findLeaguesParticipants, {
-      leagueId: league._id,
-    });
-    if (result) {
-      setUsersData(result);
+    const leagueParticipants: ParticipantsWithPoints[] = [];
+    if (league) {
+      for (let index = 0; index < league.participants.length; index++) {
+        if (league.participants[index]) {
+          const participantId = league.participants[index];
+          if (participantId) {
+            const participant = await convex.query(api.functions.findUser, {
+              id: participantId,
+              type: "_idDb",
+            });
+            if (participant !== null) {
+              const userLeagueGuesses = participant.leagues.find(
+                (userLeague) => userLeague.id === league._id
+              );
+              if (userLeagueGuesses) {
+                leagueParticipants.push({
+                  participant: participant,
+                  totalPoints: userLeagueGuesses.totalPoints,
+                });
+              }
+            }
+          }
+        }
+      }
+      setUsersData(leagueParticipants);
     }
   }
 

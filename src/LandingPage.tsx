@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { Modal } from "@mui/material";
 import ModalInfo from "./components/ModalInfo";
 import { UpdatePoints } from "./screens/UpdatePoints";
+import Notification from "./components/Notification";
 
 export type PageProps = {
   userData:
@@ -127,6 +128,7 @@ function LandingPage() {
   } else {
     return (
       <div className="flex h-screen flex-col justify-between scroll-smooth">
+        <Notification />
         {/* HEADER */}
         <Header
           title={headerTitle}

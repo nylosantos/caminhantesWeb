@@ -25,6 +25,7 @@ export default defineSchema({
     participants: v.array(v.union(v.id('users'), v.null())),
     season: v.string(),
     slug: v.string(),
+    lastUpdatedPointsTime: v.string()
   }),
   users: defineTable({
     email: v.union(v.null(), v.string()),

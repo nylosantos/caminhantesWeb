@@ -20,7 +20,7 @@ export function FooterMenu() {
               ? null
               : setPage({ show: "home", prev: page.show })
           }
-          className="flex flex-col items-center gap-1 text-red-600"
+          className={`flex flex-col items-center gap-1 ${page.show === "home" ? "text-red-600" : "text-gray-500/70"}`}
         >
           <GiSoccerBall size={24} />
           <p className="text-xs">Meus Bolões</p>
@@ -31,7 +31,7 @@ export function FooterMenu() {
               ? null
               : setPage({ show: "settings", prev: page.show })
           }
-          className="flex flex-col items-center gap-1 text-red-600"
+          className={`flex flex-col items-center gap-1 ${page.show === "settings" ? "text-red-600" : "text-gray-500/70"}`}
         >
           <IoSettings size={24} />
           <p className="text-xs">Configurações</p>
@@ -43,7 +43,7 @@ export function FooterMenu() {
                 ? null
                 : setPage({ show: "dashboard", prev: page.show })
             }
-            className="flex flex-col items-center gap-1 text-red-600"
+            className={`flex flex-col items-center gap-1 ${page.show === "dashboard" ? "text-red-600" : "text-gray-500/70"}`}
           >
             <GrSystem size={24} />
             <p className="text-xs">Administração</p>
