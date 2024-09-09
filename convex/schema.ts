@@ -16,7 +16,6 @@ export default defineSchema({
         Location: v.string(),
         MatchNumber: v.float64(),
         RoundNumber: v.float64(),
-        active: v.optional(v.boolean()),
       })
     ),
     id: v.string(),

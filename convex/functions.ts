@@ -132,9 +132,22 @@ export const createLeague = mutation({
     season: v.string(),
     slug: v.string(),
     createdBy: v.string(),
+    games: v.array(
+      v.object({
+        AwayTeam: v.string(),
+        AwayTeamScore: v.union(v.null(), v.float64()),
+        DateUtc: v.string(),
+        Group: v.union(v.null(), v.string()),
+        HomeTeam: v.string(),
+        HomeTeamScore: v.union(v.null(), v.float64()),
+        Location: v.string(),
+        MatchNumber: v.float64(),
+        RoundNumber: v.float64(),
+      })
+    ),
   },
   handler: async (ctx, args) => {
-    const { code, id, logoUrl, name, season, slug, createdBy } = args;
+    const { code, id, logoUrl, name, season, slug, createdBy, games } = args;
     const leagueOrNull = await ctx.db
       .query("leagues")
       .filter((q) => q.eq(q.field("slug"), slug))
@@ -143,7 +156,7 @@ export const createLeague = mutation({
       await ctx.db.insert("leagues", {
         code,
         createdBy,
-        games: [],
+        games,
         id,
         logoUrl,
         name,
@@ -370,7 +383,6 @@ export const updateOneFixture = mutation({
       Location: v.string(),
       MatchNumber: v.float64(),
       RoundNumber: v.float64(),
-      active: v.optional(v.boolean()),
     }),
   },
   handler: async (ctx, args) => {

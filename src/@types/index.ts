@@ -15,11 +15,6 @@ export type LeagueParticipantsProps = {
   points: number;
 };
 
-// export interface DownloadedLeagueProps extends CreateLeagueProps {
-//   games: FixturesProps[];
-//   participants: LeagueParticipantsProps[];
-// }
-
 export type FixturesProps = {
   [index: string]: number | string | boolean | undefined | null;
   AwayTeam: string;
@@ -31,7 +26,6 @@ export type FixturesProps = {
   Location: string;
   MatchNumber: number;
   RoundNumber: number;
-  active?: boolean;
 };
 
 // TEAM TYPE
@@ -55,10 +49,20 @@ export type CreateLeagueProps = {
   season: string;
   slug: string;
   createdBy: string;
+  games: GameLeaguesProps[];
 };
 
-// FIREBASE ADMIN LEAGUE PROPS
-export type FirebaseAdminLeagueProps = CreateLeagueProps;
+export type GameLeaguesProps = {
+  AwayTeam: string;
+  AwayTeamScore: number | null;
+  DateUtc: string;
+  Group: string | null;
+  HomeTeam: string;
+  HomeTeamScore: number | null;
+  Location: string;
+  MatchNumber: number;
+  RoundNumber: number;
+};
 
 // FIREBASE ADMIN LEAGUE GAMES PROPS
 export type FirebaseAdminLeagueGamesProps = {
@@ -71,7 +75,6 @@ export type FirebaseAdminLeagueGamesProps = {
   Location: string;
   MatchNumber: number;
   RoundNumber: number;
-  active: boolean;
 };
 
 export type FirebaseAdminParticipantsProps = {
@@ -99,7 +102,6 @@ export type FirebaseUserLeagueGamesProps = {
   Location: string;
   MatchNumber: number;
   RoundNumber: number;
-  active: boolean;
 };
 
 // TEAM LOGO PATHS
@@ -368,13 +370,7 @@ export type LeagueGamesTableProps = {
   Location: string;
   MatchNumber: number;
   RoundNumber: number;
-  active: boolean;
 };
-
-// export interface LeaguesTableProps extends CreateLeagueProps {
-//   games: LeagueGamesTableProps[];
-//   participants: ParticipantsTableProps[];
-// }
 
 // USERS ARRAY
 
