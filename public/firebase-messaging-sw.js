@@ -17,15 +17,6 @@ importScripts("https://www.gstatic.com/firebasejs/8.2.0/firebase-messaging.js");
 //   measurementId: "G-MEASUREMENT_ID",
 // };
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAleNl2HtQ1eikuCF1M6bpJw0i7fkOwhDM",
-  authDomain: "caminhantesapp.firebaseapp.com",
-  projectId: "caminhantesapp",
-  storageBucket: "caminhantesapp.appspot.com",
-  messagingSenderId: "758289832430",
-  appId: "1:758289832430:web:ff9bbabaa7cebb852dd6ff",
-};
-
 firebase.initializeApp(firebaseConfig);
 
 // Retrieve firebase messaging
