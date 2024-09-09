@@ -6,15 +6,24 @@ importScripts("https://www.gstatic.com/firebasejs/8.2.0/firebase-app.js");
 importScripts("https://www.gstatic.com/firebasejs/8.2.0/firebase-messaging.js");
 
 // Initialize the Firebase app in the service worker by passing the generated config
+// const firebaseConfig = {
+//   apiKey: "API_KEY",
+//   authDomain: "PROJECT_ID.firebaseapp.com",
+//   databaseURL: "https://PROJECT_ID.firebaseio.com",
+//   projectId: "PROJECT_ID",
+//   storageBucket: "PROJECT_ID.appspot.com",
+//   messagingSenderId: "SENDER_ID",
+//   appId: "APP_ID",
+//   measurementId: "G-MEASUREMENT_ID",
+// };
+
 const firebaseConfig = {
-  apiKey: "API_KEY",
-  authDomain: "PROJECT_ID.firebaseapp.com",
-  databaseURL: "https://PROJECT_ID.firebaseio.com",
-  projectId: "PROJECT_ID",
-  storageBucket: "PROJECT_ID.appspot.com",
-  messagingSenderId: "SENDER_ID",
-  appId: "APP_ID",
-  measurementId: "G-MEASUREMENT_ID",
+  apiKey: "AIzaSyAleNl2HtQ1eikuCF1M6bpJw0i7fkOwhDM",
+  authDomain: "caminhantesapp.firebaseapp.com",
+  projectId: "caminhantesapp",
+  storageBucket: "caminhantesapp.appspot.com",
+  messagingSenderId: "758289832430",
+  appId: "1:758289832430:web:ff9bbabaa7cebb852dd6ff",
 };
 
 firebase.initializeApp(firebaseConfig);
