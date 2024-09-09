@@ -638,20 +638,6 @@ export default function PoolPage({ userData }: PageProps) {
                 } else {
                   return Number(new Date(a.DateUtc) < new Date(b.DateUtc));
                 }
-
-                if (new Date(a.DateUtc) < new Date(b.DateUtc)) {
-                  console.log(new Date(a.DateUtc) < new Date(b.DateUtc));
-                  return -1;
-                }
-                if (new Date(a.DateUtc) > new Date(b.DateUtc)) {
-                  console.log(new Date(a.DateUtc) > new Date(b.DateUtc));
-                  return -1;
-                }
-                if (b.MatchNumber - a.MatchNumber) {
-                  console.log(b.MatchNumber - a.MatchNumber);
-                  return -1;
-                }
-                return 0;
               })
               .map((item) => (
                 <div
@@ -691,8 +677,7 @@ export default function PoolPage({ userData }: PageProps) {
                       <div className="flex flex-row items-center justify-end">
                         <div className="flex flex-row items-center gap-2 px-2">
                           <div className="flex flex-row items-center">
-                            {competition!._id ===
-                            "jh700qq9t47yv0wxf7bzb0dmmd7030hv"
+                            {competition!.name === "Nations League"
                               ? getCountryFlag(item.HomeTeam)
                               : handleClubBadge(item.HomeTeam)}
                           </div>
@@ -828,8 +813,7 @@ export default function PoolPage({ userData }: PageProps) {
                         />
                         <div className="flex flex-row items-center gap-2 px-2">
                           <div className="flex flex-row items-center">
-                            {competition!._id ===
-                            "jh700qq9t47yv0wxf7bzb0dmmd7030hv"
+                            {competition!.name === "Nations League"
                               ? getCountryFlag(item.AwayTeam)
                               : handleClubBadge(item.AwayTeam)}
                           </div>
