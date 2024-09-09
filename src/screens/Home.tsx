@@ -30,7 +30,7 @@ export default function Home({ userData, userPools }: HomePageProps) {
   // CUSTOMIZE HEADER AND FOOTER
   useEffect(() => {
     onHeaderCustomize('Meus Bolões', false, true);
-    onFooterCustomize(true, true);
+    onFooterCustomize(false, true);
     setRoundSelected(undefined);
     setCompetition(null);
   }, []);

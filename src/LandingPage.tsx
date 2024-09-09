@@ -142,7 +142,7 @@ function LandingPage() {
         {/* MODAL */}
         <Modal
           open={openModal}
-          className="flex w-full items-start justify-center overflow-auto py-10"
+          className="flex w-full items-start justify-center overflow-auto"
           aria-labelledby="modal-modal-title"
           aria-describedby="modal-modal-description"
         >

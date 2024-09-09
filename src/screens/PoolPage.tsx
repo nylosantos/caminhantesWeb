@@ -176,7 +176,7 @@ export default function PoolPage({ userData }: PageProps) {
                   fixture: fixture,
                 })
                 .then(() => {
-                  toast.success("Palpite enviado! Agora é torcer! 👌");
+                  toast.success("Resultado atualizado! 👌");
                 });
             }
           } else {

@@ -6,6 +6,7 @@ import { GlobalDataContext } from "../context/GlobalDataContext";
 import { GlobalDataContextType } from "../@types";
 import Button from "../components/Button";
 import { PageProps } from "../LandingPage";
+import CopyrightFooter from "../components/CopyrightFooter";
 
 export default function Settings({ userData }: PageProps) {
   // GET GLOBAL DATA
@@ -17,12 +18,12 @@ export default function Settings({ userData }: PageProps) {
   // CUSTOMIZE HEADER AND FOOTER
   useEffect(() => {
     onHeaderCustomize("Configurações", false, true);
-    onFooterCustomize(true, true);
+    onFooterCustomize(false, true);
   }, []);
 
   return (
     <Container>
-      <div className="mb-10 flex w-full max-w-md flex-col items-center justify-start bg-white">
+      <div className="flex w-full max-w-md flex-col items-center justify-start bg-white">
         <div className="mb-3 mt-10 flex w-full flex-row items-center justify-between rounded-md border-b-2 border-gray-500 bg-gray-200/50 p-4">
           <div className="flex flex-row items-center gap-3">
             <div>
@@ -98,6 +99,7 @@ export default function Settings({ userData }: PageProps) {
           </p>
         </div>
       </div>
+      <CopyrightFooter />
     </Container>
   );
 }

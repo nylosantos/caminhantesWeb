@@ -10,7 +10,7 @@ export default function FooterContainer() {
     GlobalDataContext
   ) as GlobalDataContextType;
   return (
-    <div className="fixed bottom-0 flex w-full flex-col items-center justify-center gap-1 bg-white pt-1">
+    <div className="fixed bottom-0 flex w-full flex-col items-center justify-center gap-1 bg-gray-200 pt-1">
       {showCopyright && <CopyrightFooter />}
       {showFooterMenu && <FooterMenu />}
     </div>
