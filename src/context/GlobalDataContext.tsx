@@ -103,10 +103,6 @@ export const GlobalDataProvider = ({ children }: PostsContextProviderProps) => {
     }
   }
 
-  useEffect(() => {
-    console.log(dbUsersData);
-  }, [dbUsersData]);
-
   // LOGGED USER DATA LEAGUES/POOLS
   const [userPools, setUserPools] = useState<
     Doc<"leagues">[] | undefined | null
