@@ -77,6 +77,36 @@ export const GlobalDataProvider = ({ children }: PostsContextProviderProps) => {
   // LOGGED USER DATA STATE
   const [userData, setUserData] = useState<Doc<"users">>();
 
+  // DATABASE USERS DATA STATE
+  const [dbUsersData, setDbUsersData] = useState<
+    Doc<"users">[] | null | undefined
+  >();
+
+  // DATABASE LEAGUES DATA STATE
+  const [dbLeaguesData, setDbLeaguesData] = useState<
+    Doc<"leagues">[] | null | undefined
+  >();
+
+  // GETTING DATABASE USERS DATA FUNCTION
+  async function handleDbData() {
+    const downloadedUsersData = await convex.query(api.dbRoot.getUsers);
+    const downloadedLeaguesData = await convex.query(api.dbRoot.getLeagues);
+    if (downloadedLeaguesData) {
+      setDbLeaguesData(downloadedLeaguesData);
+    }
+    if (downloadedUsersData) {
+      setDbUsersData(downloadedUsersData);
+      return downloadedUsersData;
+    } else {
+      setDbUsersData([]);
+      return downloadedUsersData;
+    }
+  }
+
+  useEffect(() => {
+    console.log(dbUsersData);
+  }, [dbUsersData]);
+
   // LOGGED USER DATA LEAGUES/POOLS
   const [userPools, setUserPools] = useState<
     Doc<"leagues">[] | undefined | null
@@ -97,7 +127,6 @@ export const GlobalDataProvider = ({ children }: PostsContextProviderProps) => {
         })
         .then(() => {
           setPage({ show: "home", prev: "home" });
-          // console.log('cheguei aqui');
         })
         .catch((error) => {
           console.log(error);
@@ -110,19 +139,32 @@ export const GlobalDataProvider = ({ children }: PostsContextProviderProps) => {
   }
 
   // HANDLE USER FUNCTION
-  async function handleUser(user: User) {
-    const userResponse = await convex.query(api.functions.findUser, {
-      id: user.uid,
-      type: "idString",
-    });
-    if (userResponse) {
+  async function handleUser(
+    user: User,
+    downloadedUsersData: Doc<"users">[] | undefined | null
+  ) {
+    if (downloadedUsersData) {
+      const userResponse = downloadedUsersData.find(
+        (dbUserData) => dbUserData.id === user.uid
+      );
+      // const userResponse = await convex.query(api.functions.findUser, {
+      //   // PEGAR DO STATE, NÃO DO BANCO
+      //   id: user.uid,
+      //   type: "idString",
+      // });
       if (userResponse) {
-        setUserData(userResponse);
-        setLogged(true);
-        setIsSubmitting(false);
-        toast.success(`Bem-vindo, ${userResponse.name}! 👌`);
+        if (userResponse) {
+          setUserData(userResponse);
+          setLogged(true);
+          setIsSubmitting(false);
+          toast.success(`Bem-vindo, ${userResponse.name}! 👌`);
+        }
+        setLogin(false);
+      } else {
+        toast.error(
+          "Não foi possível fazer o login, contate a administração. 🤯"
+        );
       }
-      setLogin(false);
     } else {
       toast.error(
         "Não foi possível fazer o login, contate a administração. 🤯"
@@ -131,21 +173,32 @@ export const GlobalDataProvider = ({ children }: PostsContextProviderProps) => {
   }
 
   // HANDLE USER WITHOUT TOAST => TO USE WHEN USER REFRESH PAGE
-  async function handleUserWhithoutToast(user: User) {
-    const userResponse = await convex.query(api.functions.findUser, {
-      id: user.uid,
-      type: "idString",
-    });
-    if (userResponse) {
+  async function handleUserWhithoutToast(
+    user: User,
+    downloadedUsersData: Doc<"users">[] | undefined | null
+  ) {
+    if (downloadedUsersData) {
+      const userResponse = downloadedUsersData.find(
+        (dbUserData) => dbUserData.id === user.uid
+      );
+      // const userResponse = await convex.query(api.functions.findUser, {
+      //   // PEGAR DO STATE, NÃO DO BANCO
+      //   id: user.uid,
+      //   type: "idString",
+      // });
       if (userResponse) {
         setUserData(userResponse);
         setLogged(true);
         setIsSubmitting(false);
+        setLogin(false);
+      } else {
+        toast.error(
+          "Não foi possível buscar os dados, contate a administração. 🤯"
+        );
       }
-      setLogin(false);
     } else {
       toast.error(
-        "Não foi possível fazer o login, contate a administração. 🤯"
+        "Não foi possível buscar os dados aqui, contate a administração. 🤯"
       );
     }
   }
@@ -160,7 +213,20 @@ export const GlobalDataProvider = ({ children }: PostsContextProviderProps) => {
 
     if (user && !userData) {
       // setIsSubmitting(true);
-      handleUserWhithoutToast(user);
+      handleDbData().then((downloadedUsersData) => {
+        if (downloadedUsersData) {
+          handleUserWhithoutToast(user, downloadedUsersData);
+        } else {
+          console.log(
+            "Erro ao obter os usuários do banco de dados (downloadedUsersData): ",
+            downloadedUsersData
+          );
+          toast.error(
+            "Erro ao verificar usuário no banco de dados. Tente com e-mail e senha..."
+          );
+          setIsSubmitting(false);
+        }
+      });
     }
 
     if (user && userData) {
@@ -755,10 +821,13 @@ export const GlobalDataProvider = ({ children }: PostsContextProviderProps) => {
         const leagueParticipants = league.participants;
         if (leagueParticipants.length > 0) {
           leagueParticipants.map(async (participant) => {
-            const userData = await convex.query(api.functions.findUser, {
-              id: participant!,
-              type: "_idDb",
-            });
+            const userData = dbUsersData!.find(
+              (dbUserData) => dbUserData._id === participant
+            );
+            // const userData = await convex.query(api.functions.findUser, {
+            //   id: participant!,
+            //   type: "_idDb",
+            // });
             if (userData && userData.leagues) {
               // FINDING LEAGUE INDEX
               const foundedLeagueIndex = userData.leagues.findIndex(
@@ -854,6 +923,8 @@ export const GlobalDataProvider = ({ children }: PostsContextProviderProps) => {
         convex,
         competition,
         db,
+        dbLeaguesData,
+        dbUsersData,
         emptyInputGuesses,
         filledGuesses,
         fixturesToShow,
@@ -882,21 +953,23 @@ export const GlobalDataProvider = ({ children }: PostsContextProviderProps) => {
         createLeague,
         deleteLeague,
         handleClubBadge,
-        setCompetition,
-        setFilledGuesses,
-        setIsSubmitting,
+        handleDbData,
         handleLogout,
-        setOpenModal,
-        setPage,
-        setRoundSelected,
         handleUser,
         handleUserPools,
         handleValueInputScore,
-        onHeaderCustomize,
         onFooterCustomize,
+        onHeaderCustomize,
+        setCompetition,
+        setDbUsersData,
+        setFilledGuesses,
+        setIsSubmitting,
+        setOpenModal,
         setLoading,
-        toggleGuessesResultsRanking,
         setLogin,
+        setPage,
+        setRoundSelected,
+        toggleGuessesResultsRanking,
         updateStateGuesses,
         updatePoints,
       }}

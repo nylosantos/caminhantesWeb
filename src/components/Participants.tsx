@@ -2,7 +2,7 @@ import { useContext, useEffect, useState } from "react";
 import { v4 as uuidV4 } from "uuid";
 import { GlobalDataContextType } from "../@types";
 import { GlobalDataContext } from "../context/GlobalDataContext";
-import { api } from "../../convex/_generated/api";
+// import { api } from "../../convex/_generated/api";
 import { Doc } from "../../convex/_generated/dataModel";
 import { ParticipantsWithPoints } from "../screens/PoolPage";
 
@@ -12,7 +12,7 @@ interface ParticipantsProps {
 
 export const Participants = ({ league }: ParticipantsProps) => {
   // GET GLOBAL DATA
-  const { convex, userPools } = useContext(
+  const { /*convex, */ dbUsersData, userPools } = useContext(
     GlobalDataContext
   ) as GlobalDataContextType;
   const [usersData, setUsersData] = useState<ParticipantsWithPoints[] | null>(
@@ -26,12 +26,15 @@ export const Participants = ({ league }: ParticipantsProps) => {
       for (let index = 0; index < league.participants.length; index++) {
         if (league.participants[index]) {
           const participantId = league.participants[index];
-          if (participantId) {
-            const participant = await convex.query(api.functions.findUser, {
-              id: participantId,
-              type: "_idDb",
-            });
-            if (participant !== null) {
+          if (participantId && dbUsersData) {
+            const participant = dbUsersData.find(
+              (dbUserData) => dbUserData._id === participantId
+            );
+            // const participant = await convex.query(api.functions.findUser, {
+            //   id: participantId,
+            //   type: "_idDb",
+            // });
+            if (participant) {
               const userLeagueGuesses = participant.leagues.find(
                 (userLeague) => userLeague.id === league._id
               );
@@ -62,7 +65,7 @@ export const Participants = ({ league }: ParticipantsProps) => {
   useEffect(() => {
     getLeagueParticipants();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userPools]);
+  }, [userPools, dbUsersData]);
 
   // CUSTOMIZING BACKGROUND COLOR ACCORDING TO THE COMPETITION
   const chooseBgCompetitionColor = (name: string) => {

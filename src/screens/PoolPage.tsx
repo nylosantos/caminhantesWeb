@@ -32,18 +32,19 @@ export default function PoolPage({ userData }: PageProps) {
     allRounds,
     convex,
     competition,
+    dbUsersData,
     fixturesToShow,
     inputGuesses,
     isMyGuesses,
     listToShow,
     loading,
-    toggleGuessesResultsRanking,
+    handleClubBadge,
+    handleValueInputScore,
     onFooterCustomize,
     onHeaderCustomize,
-    handleClubBadge,
     setFilledGuesses,
-    handleValueInputScore,
     setLoading,
+    toggleGuessesResultsRanking,
     updateStateGuesses,
   } = useContext(GlobalDataContext) as GlobalDataContextType;
 
@@ -273,12 +274,15 @@ export default function PoolPage({ userData }: PageProps) {
       for (let index = 0; index < competition.participants.length; index++) {
         if (competition.participants[index]) {
           const participantId = competition.participants[index];
-          if (participantId) {
-            const participant = await convex.query(api.functions.findUser, {
-              id: participantId,
-              type: "_idDb",
-            });
-            if (participant !== null) {
+          if (participantId && dbUsersData) {
+            const participant = dbUsersData.find(
+              (dbUserData) => dbUserData._id === participantId
+            );
+            // const participant = await convex.query(api.functions.findUser, {
+            //   id: participantId,
+            //   type: "_idDb",
+            // });
+            if (participant) {
               const userLeagueGuesses = participant.leagues.find(
                 (userLeague) => userLeague.id === competition._id
               );
@@ -821,7 +825,7 @@ export default function PoolPage({ userData }: PageProps) {
                       </div>
                     </div>
                   </div>
-                  {/* USER POINTS */}
+                  {/* ACTION BUTTON (SEND GUESS / UPDATE RESULTS / SHOW POINTS-MESSAGE) */}
                   {listToShow === "guesses" ? (
                     <div className="mb-4 flex w-full flex-col items-center justify-center px-4">
                       {new Date(item.DateUtc) > new Date() ? (

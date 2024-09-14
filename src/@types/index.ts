@@ -292,6 +292,8 @@ export type GlobalDataContextType = {
   convex: ConvexReactClient;
   competition: Doc<"leagues"> | null | undefined;
   db: Firestore;
+  dbLeaguesData: Doc<"leagues">[] | null | undefined;
+  dbUsersData: Doc<"users">[] | null | undefined;
   emptyInputGuesses: MutableRefObject<number>;
   filledGuesses: boolean;
   fixturesToShow: FixturesProps[];
@@ -320,14 +322,12 @@ export type GlobalDataContextType = {
   createLeague: (leagueInfo: CreateLeagueProps) => void;
   deleteLeague: (leagueId: DbId<"leagues">) => void;
   handleClubBadge: (clubName: string) => ReactNode;
-  setCompetition: (id: Doc<"leagues"> | null | undefined) => void;
-  setFilledGuesses: (option: boolean) => void;
-  setIsSubmitting: (option: boolean) => void;
+  handleDbData: () => Promise<Doc<"users">[] | null | undefined>;
   handleLogout: () => void;
-  setOpenModal: (value: boolean) => void;
-  setPage: (newPage: SetPageProps) => void;
-  setRoundSelected: (round: number | undefined) => void;
-  handleUser: (user: User) => void;
+  handleUser: (
+    user: User,
+    downloadedUsersData: Doc<"users">[] | undefined | null
+  ) => void;
   handleUserPools: () => void;
   handleValueInputScore: (
     item: FixturesProps,
@@ -339,11 +339,18 @@ export type GlobalDataContextType = {
     leftBackIcon: boolean,
     rightInfoIcon: boolean
   ) => void;
+  setCompetition: (id: Doc<"leagues"> | null | undefined) => void;
+  setDbUsersData: (value: Doc<"users">[] | null | undefined) => void;
+  setFilledGuesses: (option: boolean) => void;
+  setIsSubmitting: (option: boolean) => void;
   setLoading: (value: boolean) => void;
+  setLogin: (value: boolean) => void;
+  setOpenModal: (value: boolean) => void;
+  setPage: (newPage: SetPageProps) => void;
+  setRoundSelected: (round: number | undefined) => void;
   toggleGuessesResultsRanking: (
     option: "guesses" | "results" | "ranking"
   ) => void;
-  setLogin: (value: boolean) => void;
   updateStateGuesses: (
     matchNumber: number,
     teamLocation: "home" | "away",

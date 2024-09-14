@@ -23,6 +23,8 @@ export function UpdatePoints() {
   // GET GLOBAL DATA
   const {
     convex,
+    dbLeaguesData,
+    dbUsersData,
     isSubmitting,
     setIsSubmitting,
     onHeaderCustomize,
@@ -37,29 +39,29 @@ export function UpdatePoints() {
   }, []);
 
   const [data, setData] = useState<DataProps[]>([]);
-  const [dbLeagues, setDbLeagues] = useState<Doc<"leagues">[]>([]);
+  // const [dbLeagues, setDbLeagues] = useState<Doc<"leagues">[]>([]);
   const [leagueDetails, setLeagueDetails] = useState<
     Doc<"leagues"> | undefined
   >();
 
   // GET LEAGUES FROM DB
-  async function getDbLeagues() {
-    return await convex.query(api.dbRoot.getLeagues);
-  }
+  // async function getDbLeagues() {
+  //   return await convex.query(api.dbRoot.getLeagues);
+  // }
 
   // CALL FUNCTION ON RENDER
-  useEffect(() => {
-    getDbLeagues().then((res) => {
-      if (res) {
-        setDbLeagues(res);
-      }
-    });
-  }, []);
+  // useEffect(() => {
+  //   getDbLeagues().then((res) => {
+  //     if (res) {
+  //       setDbLeagues(res);
+  //     }
+  //   });
+  // }, []);
 
   function handleSelectData() {
-    if (dbLeagues) {
+    if (dbLeaguesData) {
       const array: DataProps[] = [];
-      dbLeagues.map((league) =>
+      dbLeaguesData.map((league) =>
         array.push({
           label: `${league.name} ${league.season}`,
           value: league._id,
@@ -72,11 +74,11 @@ export function UpdatePoints() {
   // PUT DATA ON SELECT
   useEffect(() => {
     handleSelectData();
-  }, [dbLeagues]);
+  }, [dbLeaguesData]);
 
   // GETTING LEAGUE DETAILS TO SHOW CONFIRMATION
   function handleLeagueDetail(id: Id<"leagues">) {
-    const leagueDetail = dbLeagues.find((league) => league._id === id);
+    const leagueDetail = dbLeaguesData!.find((league) => league._id === id);
     if (leagueDetail) {
       setLeagueDetails(leagueDetail);
     }
@@ -120,23 +122,25 @@ export function UpdatePoints() {
   async function handleUpdateLeaguePoints() {
     setIsSubmitting(true);
     if (leagueDetails) {
-      if (dbLeagues && dbLeagues.length > 0) {
-        const foundedLeagueToUpdatePointsIndex = dbLeagues.findIndex(
+      if (dbLeaguesData && dbLeaguesData.length > 0) {
+        const foundedLeagueToUpdatePointsIndex = dbLeaguesData.findIndex(
           (league) => league._id === leagueDetails._id
         );
 
         if (foundedLeagueToUpdatePointsIndex !== -1) {
-          const dbLeagueData = dbLeagues[foundedLeagueToUpdatePointsIndex];
+          const dbLeagueData = dbLeaguesData[foundedLeagueToUpdatePointsIndex];
 
           const leagueParticipants = dbLeagueData.participants;
 
           if (leagueParticipants.length > 0) {
             leagueParticipants.map(async (participant) => {
-              const userData = await convex.query(api.functions.findUser, {
-                id: participant!,
-                type: "_idDb",
-              });
-
+              const userData = dbUsersData!.find(
+                (dbUserData) => dbUserData._id === participant
+              );
+              // const userData = await convex.query(api.functions.findUser, {
+              //   id: participant!,
+              //   type: "_idDb",
+              // });
               if (userData && userData.leagues) {
                 // FINDING LEAGUE INDEX
                 const foundedLeagueIndex = userData.leagues.findIndex(
@@ -294,7 +298,7 @@ export function UpdatePoints() {
         setIsSubmitting(false);
         console.log(
           "Algum erro com o estado que contém os detalhes da liga vindos do banco de dados (dbLeagues): ",
-          dbLeagues
+          dbLeaguesData
         );
         return toast.error(
           "Erro ao obter os detalhes da liga no banco de dados... 🤯"

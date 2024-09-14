@@ -14,6 +14,8 @@ export default function SearchPool({ userData }: PageProps) {
   // GET GLOBAL DATA
   const {
     convex,
+    dbUsersData,
+    dbLeaguesData,
     isSubmitting,
     // userData,
     setOpenModal,
@@ -41,12 +43,15 @@ export default function SearchPool({ userData }: PageProps) {
   // const dbFoundedLeagueInfo = useQuery(api.functions.findPoolToJoin, { leagueCode: poolCode });
 
   async function getLeagueInfo(inputPoolCode: string) {
-    const dbFoundedLeagueInfo = await convex.query(
-      api.functions.findPoolToJoin,
-      {
-        leagueCode: inputPoolCode,
-      }
+    const dbFoundedLeagueInfo = dbLeaguesData!.find(
+      (dbLeagueData) => dbLeagueData.code === inputPoolCode
     );
+    // const dbFoundedLeagueInfo = await convex.query(
+    //   api.functions.findPoolToJoin,
+    //   {
+    //     leagueCode: inputPoolCode,
+    //   }
+    // );
     if (dbFoundedLeagueInfo) {
       setLeagueInfo(dbFoundedLeagueInfo);
       setPoolCode("poolCodeOk");
@@ -5387,11 +5392,14 @@ export default function SearchPool({ userData }: PageProps) {
   const handleJoinPool = () => {
     async function callBackend() {
       setIsSubmitting(true);
-      if (leagueInfo && userData) {
-        const userDataBase = await convex.query(api.functions.findUser, {
-          id: userData._id,
-          type: "_idDb",
-        });
+      if (leagueInfo && userData && dbUsersData) {
+        const userDataBase = dbUsersData.find(
+          (dbUserData) => dbUserData._id === userData._id
+        );
+        // const userDataBase = await convex.query(api.functions.findUser, {
+        //   id: userData._id,
+        //   type: "_idDb",
+        // });
         if (userDataBase) {
           const leagueIndex = userDataBase.leagues.findIndex(
             (league) => league.id === leagueInfo._id
@@ -5403,25 +5411,25 @@ export default function SearchPool({ userData }: PageProps) {
           } else {
             const userDataLeagues = userDataBase.leagues;
 
-            if (leagueInfo._id === "jh75kxnvhzt65728d42bna5j896zvgm0") {
+            if (leagueInfo.name === "Premier League") {
               userDataLeagues.push({
                 id: leagueInfo._id,
                 totalPoints: 0,
                 guesses: plGuesses,
               });
-            } else if (leagueInfo._id === "jh7d8jfgfwxgtg1gp4jtjmwhzn701n1a") {
+            } else if (leagueInfo._id === "Champions League") {
               userDataLeagues.push({
                 id: leagueInfo._id,
                 totalPoints: 0,
                 guesses: uclGuesses,
               });
-            } else if (leagueInfo._id === "jh75f25f624fw1c84m1w34tg7n6zw1vn") {
+            } else if (leagueInfo._id === "Carabao Cup") {
               userDataLeagues.push({
                 id: leagueInfo._id,
                 totalPoints: 0,
                 guesses: carabaoCupGuesses,
               });
-            } else if (leagueInfo._id === "jh700qq9t47yv0wxf7bzb0dmmd7030hv") {
+            } else if (leagueInfo._id === "Nations League") {
               userDataLeagues.push({
                 id: leagueInfo._id,
                 totalPoints: 0,

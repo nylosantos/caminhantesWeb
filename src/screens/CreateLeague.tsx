@@ -12,7 +12,7 @@ import * as urlSlug from "url-slug";
 import { v4 as uuidV4 } from "uuid";
 import { GlobalDataContext } from "../context/GlobalDataContext";
 import { toast } from "sonner";
-import { api } from "../../convex/_generated/api";
+// import { api } from "../../convex/_generated/api";
 import Button from "../components/Button";
 import Select from "react-select";
 
@@ -24,7 +24,8 @@ type LeagueStateProps = {
 export function CreateLeague() {
   // GET GLOBAL DATA
   const {
-    convex,
+    // convex,
+    dbLeaguesData,
     createLeague,
     setIsSubmitting,
     onHeaderCustomize,
@@ -7763,44 +7764,56 @@ export function CreateLeague() {
   async function handleCreateLeague() {
     setIsSubmitting(true);
     const slug = urlSlug.convert(`${leagueInfo.name} ${leagueInfo.season}`);
-    const findLeagueWithSlugAndCreator = await convex.query(
-      api.functions.findLeagueWithSlugAndCreator,
-      {
-        leagueSlug: slug,
-        leagueCreatedBy: leagueInfo.createdBy,
-      }
-    );
-    if (
-      leagueInfo.name !== "" &&
-      leagueInfo.season !== "" &&
-      leagueInfo.createdBy !== "" &&
-      inputFile !== null
-    ) {
-      if (findLeagueWithSlugAndCreator === null) {
-        const imgRef = ref(storageDb, `leagues/${slug}/${slug}-logo`);
-        await uploadBytes(imgRef, logoImg!);
-        await getDownloadURL(imgRef).then((res) => {
-          const leagueInfoToCreate: CreateLeagueProps = {
-            id: uuidV4(),
-            code: Math.random().toString(36).slice(-5),
-            slug: slug,
-            logoUrl: res,
-            name: leagueInfo.name,
-            season: leagueInfo.season,
-            createdBy: leagueInfo.createdBy,
-            games: leagueInfo.games,
-          };
-          createLeague(leagueInfoToCreate);
-          clearFields();
+    if (dbLeaguesData) {
+      const findLeagueWithSlugAndCreator = dbLeaguesData.find(
+        (dbLeagueData) =>
+          dbLeagueData.slug === slug &&
+          dbLeagueData.createdBy === leagueInfo.createdBy
+      );
+      // const findLeagueWithSlugAndCreator = await convex.query(
+      //   api.functions.findLeagueWithSlugAndCreator,
+      //   {
+      //     leagueSlug: slug,
+      //     leagueCreatedBy: leagueInfo.createdBy,
+      //   }
+      // );
+      if (
+        leagueInfo.name !== "" &&
+        leagueInfo.season !== "" &&
+        leagueInfo.createdBy !== "" &&
+        inputFile !== null
+      ) {
+        if (findLeagueWithSlugAndCreator === null) {
+          const imgRef = ref(storageDb, `leagues/${slug}/${slug}-logo`);
+          await uploadBytes(imgRef, logoImg!);
+          await getDownloadURL(imgRef).then((res) => {
+            const leagueInfoToCreate: CreateLeagueProps = {
+              id: uuidV4(),
+              code: Math.random().toString(36).slice(-5),
+              slug: slug,
+              logoUrl: res,
+              name: leagueInfo.name,
+              season: leagueInfo.season,
+              createdBy: leagueInfo.createdBy,
+              games: leagueInfo.games,
+            };
+            createLeague(leagueInfoToCreate);
+            clearFields();
+            setIsSubmitting(false);
+          });
+        } else {
           setIsSubmitting(false);
-        });
+          return toast.error("Liga já existe");
+        }
       } else {
         setIsSubmitting(false);
-        return toast.error("Liga já existe");
+        return toast.error("Preencha todas as informações");
       }
     } else {
       setIsSubmitting(false);
-      return toast.error("Preencha todas as informações");
+      return toast.error(
+        "Não foi possível buscar as informações das ligas existentes no Banco de dados."
+      );
     }
   }
 

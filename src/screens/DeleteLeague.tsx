@@ -3,7 +3,7 @@ import { useContext, useEffect, useState } from "react";
 import { Container } from "../components/Container";
 import { GlobalDataContextType } from "../@types";
 import { GlobalDataContext } from "../context/GlobalDataContext";
-import { api } from "../../convex/_generated/api";
+// import { api } from "../../convex/_generated/api";
 import Button from "../components/Button";
 import Select from "react-select";
 import Swal from "sweetalert2";
@@ -18,7 +18,8 @@ export type DataProps = {
 export function DeleteLeague() {
   // GET GLOBAL DATA
   const {
-    convex,
+    // convex,
+    dbLeaguesData,
     deleteLeague,
     setIsSubmitting,
     onHeaderCustomize,
@@ -32,29 +33,29 @@ export function DeleteLeague() {
   }, []);
 
   const [data, setData] = useState<DataProps[]>([]);
-  const [dbLeagues, setDbLeagues] = useState<Doc<"leagues">[]>([]);
+  // const [dbLeagues, setDbLeagues] = useState<Doc<"leagues">[]>([]);
   const [leagueDetails, setLeagueDetails] = useState<
     Doc<"leagues"> | undefined
   >();
 
   // GET LEAGUES FROM DB
-  async function getDbLeagues() {
-    return await convex.query(api.dbRoot.getLeagues);
-  }
+  // async function getDbLeagues() {
+  //   return await convex.query(api.dbRoot.getLeagues);
+  // }
 
   // CALL FUNCTION ON RENDER
-  useEffect(() => {
-    getDbLeagues().then((res) => {
-      if (res) {
-        setDbLeagues(res);
-      }
-    });
-  }, []);
+  // useEffect(() => {
+  //   getDbLeagues().then((res) => {
+  //     if (res) {
+  //       setDbLeagues(res);
+  //     }
+  //   });
+  // }, []);
 
   function handleSelectData() {
-    if (dbLeagues) {
+    if (dbLeaguesData) {
       const array: DataProps[] = [];
-      dbLeagues.map((league) =>
+      dbLeaguesData.map((league) =>
         array.push({
           label: `${league.name} ${league.season}`,
           value: league._id,
@@ -67,11 +68,11 @@ export function DeleteLeague() {
   // PUT DATA ON SELECT
   useEffect(() => {
     handleSelectData();
-  }, [dbLeagues]);
+  }, [dbLeaguesData]);
 
   // GETTING LEAGUE DETAILS TO SHOW CONFIRMATION
   function handleLeagueDetail(id: Id<"leagues">) {
-    const leagueDetail = dbLeagues.find((league) => league._id === id);
+    const leagueDetail = dbLeaguesData!.find((league) => league._id === id);
     if (leagueDetail) {
       setLeagueDetails(leagueDetail);
     }
