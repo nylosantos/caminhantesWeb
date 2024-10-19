@@ -82,9 +82,8 @@ export default function Settings({ userData }: PageProps) {
             Acertou o placar exato da partida? <strong>3 pontos</strong>
           </p>
           <p className="text-center text-base text-red-600">
-            Acertou apenas o vencedor ou empate <strong>mas acertou</strong>{" "}
-            quantos gols um dos dois times envolvidos fez?{" "}
-            <strong>2 pontos</strong>
+            Acertou apenas o vencedor, <strong>mas acertou</strong> quantos gols
+            um dos dois times envolvidos fez? <strong>2 pontos</strong>
           </p>
           <p className="text-center text-base text-red-600">
             Acertou apenas o vencedor ou empate? <strong>1 ponto</strong>
@@ -97,6 +96,7 @@ export default function Settings({ userData }: PageProps) {
             A atualização dos pontos e do ranking dos bolões são atualizados no
             máximo <strong>24hs após o fim da rodada</strong>
           </p>
+          <Separator />
         </div>
       </div>
       <CopyrightFooter />
