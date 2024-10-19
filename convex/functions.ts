@@ -251,6 +251,20 @@ export const getUserPoolGuesses = query({
   },
 });
 
+export const getUserGuesses = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const { userId } = args;
+    const userData = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("id"), userId))
+      .first();
+    if (userData) {
+      return userData.leagues;
+    }
+  },
+});
+
 export const updateDbUserGuesses = mutation({
   args: {
     league: v.object({

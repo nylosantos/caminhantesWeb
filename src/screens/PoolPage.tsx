@@ -3,14 +3,14 @@ import { Container } from "../components/Container";
 import { Separator } from "../components/Separator";
 import { Participants } from "../components/Participants";
 import { PoolMenu } from "../components/PoolMenu";
-import { useContext, useEffect, useRef, useState } from "react";
+import { /*memo, */ useContext, useEffect, useRef, useState } from "react";
 import { SelectFixtures } from "../components/SelectFixtures";
-import { FixturesProps, GlobalDataContextType } from "../@types";
+import { FixturesProps, GlobalDataContextType, GuessesProps } from "../@types";
 import { GlobalDataContext } from "../context/GlobalDataContext";
 import { v4 as uuidV4 } from "uuid";
 import { ptBR } from "date-fns/locale";
 import { formatInTimeZone } from "date-fns-tz";
-import { Doc } from "../../convex/_generated/dataModel";
+import { Doc, Id } from "../../convex/_generated/dataModel";
 import { api } from "../../convex/_generated/api";
 import { RingLoader } from "react-spinners";
 import { PageProps } from "../LandingPage";
@@ -20,6 +20,10 @@ import { FaCheck } from "react-icons/fa";
 import { toast } from "sonner";
 import withReactContent from "sweetalert2-react-content";
 import Swal from "sweetalert2";
+import { z } from "zod";
+// import memoize from "memoize-one";
+// import { FixedSizeList as List, areEqual } from "react-window";
+// import { FixtureListToShow } from "../components/FixtureListToShow";
 
 export interface ParticipantsWithPoints {
   participant: Doc<"users">;
@@ -29,60 +33,27 @@ export interface ParticipantsWithPoints {
 export default function PoolPage({ userData }: PageProps) {
   // GET GLOBAL DATA
   const {
+    allLeagues,
     allRounds,
     convex,
     competition,
     dbUsersData,
     fixturesToShow,
-    inputGuesses,
     isMyGuesses,
     listToShow,
     loading,
+    userAllGuesses,
     handleClubBadge,
-    handleValueInputScore,
     onFooterCustomize,
     onHeaderCustomize,
-    setFilledGuesses,
     setLoading,
     toggleGuessesResultsRanking,
-    updateStateGuesses,
   } = useContext(GlobalDataContext) as GlobalDataContextType;
 
   const [participantsData, setParticipantsData] =
     useState<ParticipantsWithPoints[]>();
 
-  const inputResults = useRef<FixturesProps[]>();
-
-  useEffect(() => {
-    if (userData && competition && isMyGuesses) {
-      const emptyGuesses = [];
-      const foundedLeagueIndex = userData.leagues.findIndex(
-        (league) => league.id === competition._id
-      );
-      if (foundedLeagueIndex !== null && foundedLeagueIndex !== undefined) {
-        fixturesToShow.map((item) => {
-          if (new Date(item.DateUtc) < new Date()) {
-            setFilledGuesses(true);
-          } else {
-            if (
-              getUserMatchPoints(item).messageIfGuessIsNull !==
-              "Palpite não enviado"
-            ) {
-              // console.log(getUserMatchPoints(item));
-            } else {
-              emptyGuesses.push(item);
-            }
-          }
-        });
-      }
-      if (emptyGuesses.length === 0) {
-        setFilledGuesses(true);
-      } else {
-        setFilledGuesses(false);
-      }
-    }
-    inputResults.current = fixturesToShow;
-  }, [fixturesToShow]);
+  const [isSubmitting, setisSubmitting] = useState(false);
 
   // CUSTOMIZE HEADER AND FOOTER
   useEffect(() => {
@@ -90,184 +61,11 @@ export default function PoolPage({ userData }: PageProps) {
     onFooterCustomize(false, true);
   }, []);
 
+  const fixtureBeingUpdated = useRef(0);
+
   const ConfirmationAlert = withReactContent(Swal);
 
-  async function updateGuess(item: FixturesProps) {
-    const guess = inputGuesses.current.find(
-      (userGuess) => userGuess.MatchNumber === item.MatchNumber
-    );
-
-    if (guess) {
-      ConfirmationAlert.fire({
-        title: "Você tem certeza?",
-        text: "Não vai ser possível modificar o palpite!",
-        icon: "warning",
-        showCancelButton: true,
-        cancelButtonColor: "#d33",
-        confirmButtonColor: "#0d9488",
-        confirmButtonText: "Sim, confirmar!",
-      }).then(async (result) => {
-        if (result.isConfirmed) {
-          if (
-            guess.HomeTeamScore === null ||
-            guess.AwayTeamScore === null ||
-            isNaN(guess.HomeTeamScore) === true ||
-            isNaN(guess.AwayTeamScore) === true
-          ) {
-            return toast.error(
-              `Palpite inválido, verifique o jogo ${item.HomeTeam} vs ${item.AwayTeam}`
-            );
-          } else {
-            const guessToUpdate = {
-              leagueId: competition!._id,
-              guess: guess,
-            };
-            convex
-              .mutation(api.functions.updateOneGuess, {
-                userId: userData!._id,
-                guess: guessToUpdate,
-              })
-              .then(() => {
-                toast.success("Palpite enviado! Agora é torcer! 👌");
-              });
-          }
-        } else {
-          return toast.warning(
-            "Parabéns por pensar um pouco mais... Afinal, que palpite era aquele? 😂😂😂 #brinks"
-          );
-        }
-      });
-    } else {
-      return toast.error(
-        "Não foi possível computar seu palpite, por favor, contate a Administração... 🤯"
-      );
-    }
-  }
-
-  async function updateResult(item: FixturesProps) {
-    if (inputResults.current !== undefined) {
-      const fixture = inputResults.current.find(
-        (fixtureResult) => fixtureResult.MatchNumber === item.MatchNumber
-      );
-
-      if (fixture) {
-        ConfirmationAlert.fire({
-          title: "Você tem certeza?",
-          text: "Confira o resultado pois pra mudar depois será uma bagunça, e diretamente no banco de dados!",
-          icon: "warning",
-          showCancelButton: true,
-          cancelButtonColor: "#d33",
-          confirmButtonColor: "#0d9488",
-          confirmButtonText: "Sim, confirmar!",
-        }).then(async (result) => {
-          if (result.isConfirmed) {
-            if (
-              fixture.HomeTeamScore === null ||
-              fixture.AwayTeamScore === null ||
-              isNaN(fixture.HomeTeamScore) === true ||
-              isNaN(fixture.AwayTeamScore) === true
-            ) {
-              return toast.error(
-                `Resultado inválido, verifique o jogo ${item.HomeTeam} vs ${item.AwayTeam}`
-              );
-            } else {
-              convex
-                .mutation(api.functions.updateOneFixture, {
-                  leagueId: competition!._id,
-                  fixture: fixture,
-                })
-                .then(() => {
-                  toast.success("Resultado atualizado! 👌");
-                });
-            }
-          } else {
-            return toast.warning(
-              "Parabéns por pensar um pouco mais... Afinal, que quem nunca leu errado e vacilou atualizando o banco de dados? 😂😂😂 #brinks"
-            );
-          }
-        });
-      } else {
-        console.log(
-          "Não achou uma partida correspondente no banco de dados para atualizar (inputResults.current): ",
-          inputResults.current
-        );
-        return toast.error(
-          "Não foi possível computar o resultado, verifique os logs no console... 🤯"
-        );
-      }
-    } else {
-      console.log(
-        "inputResults === undefined (inputResults.current): ",
-        inputResults.current
-      );
-      return toast.error(
-        "Não foi possível computar o resultado, verifique os logs no console... 🤯"
-      );
-    }
-  }
-
-  // VALUE INPUT SCORE FUNCTION
-  function handleValueFixtureInputScore(
-    item: FixturesProps,
-    teamLocation: "home" | "away"
-  ) {
-    if (teamLocation === "home") {
-      return handleScoreFixture(item.MatchNumber, "home");
-    } else {
-      return handleScoreFixture(item.MatchNumber, "away");
-    }
-  }
-
-  // UPDATE STATE AND FILL INPUT FUNCTION
-  function handleScoreFixture(
-    matchNumber: number,
-    teamLocation: "home" | "away"
-  ) {
-    if (inputResults.current) {
-      const scoreFixture = inputResults.current.find((fixture) => {
-        if (fixture.MatchNumber === matchNumber) {
-          return fixture;
-        } else {
-          return "";
-        }
-      });
-      if (teamLocation === "home") {
-        return scoreFixture?.HomeTeamScore?.toString();
-      } else {
-        return scoreFixture?.AwayTeamScore?.toString();
-      }
-    }
-  }
-
-  // UPDATE GUESSES STATE FUNCTION
-  function updateStateFixtures(
-    matchNumber: number,
-    teamLocation: "home" | "away",
-    score: string
-  ) {
-    if (inputResults.current) {
-      inputResults.current = inputResults.current.map((fixture) => {
-        if (fixture.MatchNumber === matchNumber) {
-          if (teamLocation === "home") {
-            if (score === null || score === "") {
-              return { ...fixture, HomeTeamScore: null };
-            } else {
-              return { ...fixture, HomeTeamScore: Number(score) };
-            }
-          } else {
-            if (score === null || score === "") {
-              return { ...fixture, AwayTeamScore: null };
-            } else {
-              return { ...fixture, AwayTeamScore: Number(score) };
-            }
-          }
-        } else {
-          return fixture;
-        }
-      });
-    }
-  }
-
+  // GET LEAGUE PARTICIPANTS FUNCTION (FOR SHOW THE POINTS)
   async function getLeagueAndParticipantsData() {
     const leagueParticipants: ParticipantsWithPoints[] = [];
     if (competition) {
@@ -302,7 +100,6 @@ export default function PoolPage({ userData }: PageProps) {
   }
 
   useEffect(() => {
-    // getLeagueAndParticipantsData();
     toggleGuessesResultsRanking("guesses");
   }, []);
 
@@ -527,10 +324,152 @@ export default function PoolPage({ userData }: PageProps) {
     }
   };
 
+  // FORM VALIDATOR
+  const fixtureSchema = z.object({
+    HomeTeamScore: z.string().min(1),
+    AwayTeamScore: z.string().min(1),
+    MatchNumber: z.string(),
+    RoundNumber: z.string(),
+    points: z.literal("0"),
+  });
+
+  interface GuessToDatabase {
+    leagueId: Id<"leagues">;
+    guess: GuessesProps;
+  }
+
+  // CHECK IF GUESS WAS SENDED
+  function handleGuessSended(item: FixturesProps) {
+    if (userAllGuesses && competition) {
+      const competitionUserFoundedGuesses = userAllGuesses.find(
+        (competitionAllGuesses) => competitionAllGuesses.id === competition._id
+      );
+
+      if (competitionUserFoundedGuesses) {
+        const foundedMatchGuess = competitionUserFoundedGuesses.guesses.find(
+          (matchGuess) => matchGuess.MatchNumber === item.MatchNumber
+        );
+
+        if (foundedMatchGuess) {
+          if (
+            foundedMatchGuess.HomeTeamScore !== null ||
+            foundedMatchGuess.AwayTeamScore !== null
+          ) {
+            return false;
+          } else {
+            return true;
+          }
+        } else {
+          return true;
+        }
+      } else {
+        return true;
+      }
+    } else {
+      return true;
+    }
+  }
+
+  // CHECK IF RESULTS WAS SENDED
+  function handleResultsSended(item: FixturesProps) {
+    if (allLeagues && competition) {
+      const competitionFoundedResults = allLeagues.find(
+        (competitionAllResults) => competitionAllResults._id === competition._id
+      );
+      if (competitionFoundedResults) {
+        const foundedMatchResults = competitionFoundedResults.games.find(
+          (matchResults) => matchResults.MatchNumber === item.MatchNumber
+        );
+
+        if (foundedMatchResults) {
+          console.log(foundedMatchResults);
+          if (
+            foundedMatchResults.HomeTeamScore !== null ||
+            foundedMatchResults.AwayTeamScore !== null
+          ) {
+            return false;
+          } else {
+            return true;
+          }
+        } else {
+          return true;
+        }
+      } else {
+        return true;
+      }
+    } else {
+      return true;
+    }
+  }
+
+  interface ScoreGuessFunctionProps {
+    matchNumber: number;
+    teamLocation: "home" | "away";
+  }
+
+  // CHECK AND FILL INPUT FUNCTION
+  function handleScoreGuess({
+    matchNumber,
+    teamLocation,
+  }: ScoreGuessFunctionProps) {
+    if (listToShow === "guesses") {
+      if (userAllGuesses && competition) {
+        const competitionUserFoundedGuesses = userAllGuesses.find(
+          (competitionAllGuesses) =>
+            competitionAllGuesses.id === competition._id
+        );
+
+        if (competitionUserFoundedGuesses) {
+          const foundedMatchGuess = competitionUserFoundedGuesses.guesses.find(
+            (matchGuess) => matchGuess.MatchNumber === matchNumber
+          );
+
+          if (foundedMatchGuess) {
+            if (teamLocation === "home") {
+              return foundedMatchGuess.HomeTeamScore?.toString();
+            } else {
+              return foundedMatchGuess.AwayTeamScore?.toString();
+            }
+          } else {
+            return "9";
+          }
+        } else {
+          return "9";
+        }
+      } else {
+        return "9";
+      }
+    } else if (listToShow === "results") {
+      if (allLeagues && competition) {
+        const competitionFoundedResults = allLeagues.find(
+          (competitionAllResults) =>
+            competitionAllResults._id === competition._id
+        );
+        if (competitionFoundedResults) {
+          const foundedMatchResults = competitionFoundedResults.games.find(
+            (gameResults) => gameResults.MatchNumber === matchNumber
+          );
+
+          if (foundedMatchResults) {
+            if (teamLocation === "home") {
+              return foundedMatchResults.HomeTeamScore?.toString();
+            } else {
+              return foundedMatchResults.AwayTeamScore?.toString();
+            }
+          } else {
+            return "9";
+          }
+        } else {
+          return "9";
+        }
+      }
+    }
+  }
+
   return (
     <Container>
       <>
-        <div className="z-9 fixed top-16 flex w-full max-w-md flex-col items-center justify-center bg-white px-6">
+        <div className="z-40 fixed top-16 flex w-full max-w-md flex-col items-center justify-center bg-white px-6">
           {/* SUBHEADER */}
           <div className="mt-6 flex w-full flex-row items-center justify-between">
             <div className="flex flex-row items-center gap-3">
@@ -559,7 +498,7 @@ export default function PoolPage({ userData }: PageProps) {
             <SelectFixtures listToShow={listToShow} rounds={allRounds} />
           </div>
         </div>
-        {/* FIXTURES LIST */}
+        {/* FIXTURES / RANKING LIST */}
         {loading ? (
           <div className="-mt-20 flex h-screen w-full items-center justify-center">
             <RingLoader
@@ -640,110 +579,240 @@ export default function PoolPage({ userData }: PageProps) {
                 if (a.DateUtc === b.DateUtc) {
                   return a.MatchNumber - b.MatchNumber;
                 } else {
-                  return Number(new Date(a.DateUtc) < new Date(b.DateUtc));
+                  return (
+                    Number(new Date(a.DateUtc)) - Number(new Date(b.DateUtc))
+                  );
                 }
               })
               .map((item) => (
-                <div
-                  className={`mb-3 flex w-full flex-col items-center justify-center rounded-md border-b-2 ${chooseBorderBgCardColor(
-                    item.HomeTeam,
-                    item.AwayTeam
-                  )}`}
-                  key={uuidV4()}
-                >
-                  {/* TEAMS AND DATE */}
-                  <div className="my-4 flex w-full flex-col">
-                    <p
-                      className={`w-full text-center text-sm font-bold ${chooseTextCardColor(
-                        item.HomeTeam,
-                        item.AwayTeam
-                      )}`}
-                    >
-                      {item.HomeTeam} vs {item.AwayTeam}
-                    </p>
-                    <p
-                      className={`w-full text-center text-xs ${chooseTextCardColor(
-                        item.HomeTeam,
-                        item.AwayTeam
-                      )}`}
-                    >
-                      {`${item.Location}, ${formatInTimeZone(
-                        item.DateUtc,
-                        "America/Sao_Paulo",
-                        "dd 'de' MMMM 'de' yyyy 'às' HH:mm",
-                        { locale: ptBR }
-                      )}`}
-                    </p>
-                  </div>
-                  {/* TEAMS BADGES AND SCORE INPUT */}
-                  <div className="mb-4 flex w-full flex-row items-center justify-center">
-                    <div className="flex w-full flex-row items-center justify-center">
-                      <div className="flex flex-row items-center justify-end">
-                        <div className="flex flex-row items-center gap-2 px-2">
-                          <div className="flex flex-row items-center">
-                            {competition!.name === "Nations League"
-                              ? getCountryFlag(item.HomeTeam)
-                              : handleClubBadge(item.HomeTeam)}
-                          </div>
-                        </div>
-                        <input
-                          hidden={
-                            !isMyGuesses
-                              ? false // IF IS ON A RESULTS SCREEN
-                              : new Date(item.DateUtc) > new Date()
-                                ? false // IF GAME WASN'T START YET
-                                : getUserMatchPoints(item) // IF GAME WAS STARTED
-                                      .messageIfGuessIsNull ===
-                                    "Palpite não enviado"
-                                  ? true // IF GUESS WASN'T SEND
-                                  : false // IF GUESS WAS SEND
-                          }
-                          className={`${
-                            isMyGuesses
-                              ? getUserMatchPoints(item)
-                                  .messageIfGuessIsNull ===
-                                "Palpite não enviado"
-                                ? new Date(item.DateUtc) < new Date()
-                                  ? "bg-transparent" // IF GAME WAS STARTED
-                                  : "bg-gray-300" // IF GAME WASN'T START YET
-                                : "bg-gray-300" // IF GUESS WAS SEND
-                              : "bg-gray-300" // IF IS ON A RESULTS SCREEN
-                          } h-10 w-10 rounded text-center text-gray-950 outline-none`}
-                          type="text"
-                          id="home-score"
-                          value={
-                            isMyGuesses
-                              ? handleValueInputScore(item, "home")
-                              : handleValueFixtureInputScore(item, "home")
-                          }
-                          onChange={(event) => {
-                            const score = event.target.value
-                              .replace(/[^0-9.]/g, "")
-                              .replace(/(\..*?)\..*/g, "$1");
-                            if (isMyGuesses) {
-                              updateStateGuesses(
-                                item.MatchNumber,
-                                "home",
-                                score
-                              );
+                <>
+                  {/* FORM */}
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      fixtureBeingUpdated.current = item.MatchNumber;
+                      const formData = new FormData(e.currentTarget);
+                      const formValues = Object.fromEntries(formData);
+                      const fixtureValues = fixtureSchema.safeParse(formValues);
+
+                      if (!fixtureValues.success) {
+                        if (listToShow === "guesses") {
+                          return toast.error(
+                            `Palpite inválido, verifique o jogo ${item.HomeTeam} vs ${item.AwayTeam}`
+                          );
+                        } else {
+                          return toast.error(
+                            `Resultado inválido, verifique o jogo ${item.HomeTeam} vs ${item.AwayTeam}`
+                          );
+                        }
+                      } else {
+                        if (listToShow === "guesses") {
+                          const guessToUpdate: GuessToDatabase = {
+                            leagueId: competition!._id,
+                            guess: {
+                              AwayTeamScore: Number(
+                                fixtureValues.data.AwayTeamScore
+                              ),
+                              HomeTeamScore: Number(
+                                fixtureValues.data.HomeTeamScore
+                              ),
+                              MatchNumber: Number(
+                                fixtureValues.data.MatchNumber
+                              ),
+                              RoundNumber: Number(
+                                fixtureValues.data.RoundNumber
+                              ),
+                              points: Number(fixtureValues.data.points),
+                            },
+                          };
+
+                          ConfirmationAlert.fire({
+                            title: "Você tem certeza?",
+                            text: "Não vai ser possível modificar o palpite!",
+                            icon: "warning",
+                            showCancelButton: true,
+                            cancelButtonColor: "#d33",
+                            confirmButtonColor: "#0d9488",
+                            confirmButtonText: "Sim, confirmar!",
+                          }).then(async (result) => {
+                            if (result.isConfirmed) {
+                              if (
+                                isNaN(
+                                  Number(fixtureValues.data.HomeTeamScore)
+                                ) === true ||
+                                isNaN(
+                                  Number(fixtureValues.data.AwayTeamScore)
+                                ) === true
+                              ) {
+                                return toast.error(
+                                  `Palpite inválido, verifique o jogo ${item.HomeTeam} vs ${item.AwayTeam}`
+                                );
+                              } else {
+                                setisSubmitting(true);
+                                convex
+                                  .mutation(api.functions.updateOneGuess, {
+                                    userId: userData!._id,
+                                    guess: guessToUpdate,
+                                  })
+                                  .then(() => {
+                                    setisSubmitting(false);
+                                    toast.success(
+                                      "Palpite enviado! Agora é torcer! 👌"
+                                    );
+                                  });
+                              }
                             } else {
-                              updateStateFixtures(
-                                item.MatchNumber,
-                                "home",
-                                score
+                              return toast.warning(
+                                "Parabéns por pensar um pouco mais... Afinal, que palpite era aquele? 😂😂😂 #brinks"
                               );
                             }
-                          }}
-                          readOnly={
-                            !isMyGuesses
-                              ? handleValueFixtureInputScore(item, "home") ===
-                                undefined
-                                ? false
-                                : true
-                              : new Date(item.DateUtc) < new Date()
-                          }
-                        />
+                          });
+                        } else {
+                          const resultToUpdate: FixturesProps = {
+                            AwayTeam: item.AwayTeam,
+                            DateUtc: item.DateUtc,
+                            Group: item.Group,
+                            HomeTeam: item.HomeTeam,
+                            Location: item.Location,
+                            AwayTeamScore: Number(
+                              fixtureValues.data.AwayTeamScore
+                            ),
+                            HomeTeamScore: Number(
+                              fixtureValues.data.HomeTeamScore
+                            ),
+                            MatchNumber: Number(fixtureValues.data.MatchNumber),
+                            RoundNumber: Number(fixtureValues.data.RoundNumber),
+                          };
+
+                          ConfirmationAlert.fire({
+                            title: "Você tem certeza?",
+                            text: "Confira o resultado pois pra mudar depois será uma bagunça, e diretamente no banco de dados!",
+                            icon: "warning",
+                            showCancelButton: true,
+                            cancelButtonColor: "#d33",
+                            confirmButtonColor: "#0d9488",
+                            confirmButtonText: "Sim, confirmar!",
+                          }).then(async (result) => {
+                            if (result.isConfirmed) {
+                              if (
+                                isNaN(
+                                  Number(fixtureValues.data.HomeTeamScore)
+                                ) === true ||
+                                isNaN(
+                                  Number(fixtureValues.data.AwayTeamScore)
+                                ) === true
+                              ) {
+                                return toast.error(
+                                  `Resultado inválido, verifique o jogo ${item.HomeTeam} vs ${item.AwayTeam}`
+                                );
+                              } else {
+                                setisSubmitting(true);
+                                convex
+                                  .mutation(api.functions.updateOneFixture, {
+                                    leagueId: competition!._id,
+                                    fixture: resultToUpdate,
+                                  })
+                                  .then(() => {
+                                    setisSubmitting(false);
+                                    toast.success("Resultado atualizado! 👌");
+                                  });
+                              }
+                            } else {
+                              return toast.warning(
+                                "Parabéns por pensar um pouco mais... Afinal, que quem nunca leu errado e vacilou atualizando o banco de dados? 😂😂😂 #brinks"
+                              );
+                            }
+                          });
+                        }
+                      }
+                    }}
+                    className={`mb-3 flex w-full flex-col items-center justify-center rounded-md border-b-2 ${chooseBorderBgCardColor(
+                      item.HomeTeam,
+                      item.AwayTeam
+                    )}`}
+                    key={uuidV4()}
+                  >
+                    {/* FIXTURE DETAILS: TEAMS AND DATE */}
+                    <div className="my-4 flex w-full flex-col">
+                      <p
+                        className={`w-full text-center text-sm font-bold ${chooseTextCardColor(
+                          item.HomeTeam,
+                          item.AwayTeam
+                        )}`}
+                      >
+                        {item.HomeTeam} vs {item.AwayTeam}
+                      </p>
+                      <p
+                        className={`w-full text-center text-xs ${chooseTextCardColor(
+                          item.HomeTeam,
+                          item.AwayTeam
+                        )}`}
+                      >
+                        {`${item.Location}, ${formatInTimeZone(
+                          item.DateUtc,
+                          "America/Sao_Paulo",
+                          "dd 'de' MMMM 'de' yyyy 'às' HH:mm",
+                          { locale: ptBR }
+                        )}`}
+                      </p>
+                    </div>
+                    <div className="flex flex-row items-center justify-end mb-4">
+                      {/* HOME TEAM BADGE */}
+                      <div className="flex flex-row items-center mr-2">
+                        {competition!.name === "Nations League"
+                          ? getCountryFlag(item.HomeTeam)
+                          : handleClubBadge(item.HomeTeam)}
                       </div>
+                      {/* HIDDEN INPUT MATCH NUMBER */}
+                      <input
+                        type="number"
+                        defaultValue={item.MatchNumber}
+                        hidden
+                        name="MatchNumber"
+                      />
+                      {/* HIDDEN INPUT ROUND NUMBER */}
+                      <input
+                        type="number"
+                        defaultValue={item.RoundNumber}
+                        hidden
+                        name="RoundNumber"
+                      />
+                      {/* HIDDEN INPUT POINTS */}
+                      <input
+                        type="string"
+                        defaultValue={"0"}
+                        hidden
+                        name="points"
+                      />
+                      {/* HOME TEAM SCORE INPUT */}
+                      <input
+                        type="number"
+                        name="HomeTeamScore"
+                        pattern="^[+ 0-9]{5}$"
+                        maxLength={2}
+                        defaultValue={handleScoreGuess({
+                          matchNumber: item.MatchNumber,
+                          teamLocation: "home",
+                        })}
+                        readOnly={
+                          handleScoreGuess({
+                            matchNumber: item.MatchNumber,
+                            teamLocation: "home",
+                          })
+                            ? true
+                            : false
+                        }
+                        className={`${
+                          isMyGuesses
+                            ? getUserMatchPoints(item).messageIfGuessIsNull ===
+                              "Palpite não enviado"
+                              ? new Date(item.DateUtc) < new Date()
+                                ? "bg-transparent" // IF GAME WAS STARTED
+                                : "bg-gray-300" // IF GAME WASN'T START YET
+                              : "bg-gray-300" // IF GUESS WAS SEND
+                            : "bg-gray-300" // IF IS ON A RESULTS SCREEN
+                        } h-10 w-10 rounded text-center text-gray-950 outline-none`}
+                      />
                       {/* TEAM SEPARATOR: '-' or 'vs' */}
                       <p className="px-1 text-center text-gray-500">
                         {
@@ -757,148 +826,158 @@ export default function PoolPage({ userData }: PageProps) {
                             : "-" // IF IS ON A RESULTS SCREEN
                         }
                       </p>
-                      <div className="flex flex-row items-center justify-start">
-                        <input
-                          hidden={
-                            !isMyGuesses
-                              ? false // IF IS ON A RESULTS SCREEN
-                              : new Date(item.DateUtc) > new Date()
-                                ? false // IF GAME WASN'T START YET
-                                : getUserMatchPoints(item) // IF GAME WAS STARTED
-                                      .messageIfGuessIsNull ===
-                                    "Palpite não enviado"
-                                  ? true // IF GUESS WASN'T SEND
-                                  : false // IF GUESS WAS SEND
-                          }
-                          className={`${
-                            isMyGuesses
-                              ? getUserMatchPoints(item)
-                                  .messageIfGuessIsNull ===
-                                "Palpite não enviado"
-                                ? new Date(item.DateUtc) < new Date()
-                                  ? "bg-transparent" // IF GAME WAS STARTED
-                                  : "bg-gray-300" // IF GAME WASN'T START YET
-                                : "bg-gray-300" // IF GUESS WAS SEND
-                              : "bg-gray-300" // IF IS ON A RESULTS SCREEN
-                          } h-10 w-10 rounded text-center text-gray-950 outline-none`}
-                          type="text"
-                          id="away-score"
-                          value={
-                            isMyGuesses
-                              ? handleValueInputScore(item, "away")
-                              : handleValueFixtureInputScore(item, "away")
-                          }
-                          onChange={(event) => {
-                            const score = event.target.value
-                              .replace(/[^0-9.]/g, "")
-                              .replace(/(\..*?)\..*/g, "$1");
-                            if (isMyGuesses) {
-                              updateStateGuesses(
-                                item.MatchNumber,
-                                "away",
-                                score
-                              );
-                            } else {
-                              updateStateFixtures(
-                                item.MatchNumber,
-                                "away",
-                                score
-                              );
-                            }
-                          }}
-                          readOnly={
-                            !isMyGuesses
-                              ? handleValueFixtureInputScore(item, "away") ===
-                                undefined
-                                ? false
-                                : true
-                              : new Date(item.DateUtc) < new Date()
-                          }
-                        />
-                        <div className="flex flex-row items-center gap-2 px-2">
-                          <div className="flex flex-row items-center">
-                            {competition!.name === "Nations League"
-                              ? getCountryFlag(item.AwayTeam)
-                              : handleClubBadge(item.AwayTeam)}
-                          </div>
-                        </div>
+                      {/* AWAY TEAM SCORE INPUT */}
+                      <input
+                        type="number"
+                        name="AwayTeamScore"
+                        pattern="^[+ 0-9]{5}$"
+                        maxLength={2}
+                        defaultValue={handleScoreGuess({
+                          matchNumber: item.MatchNumber,
+                          teamLocation: "away",
+                        })}
+                        readOnly={
+                          handleScoreGuess({
+                            matchNumber: item.MatchNumber,
+                            teamLocation: "away",
+                          })
+                            ? true
+                            : false
+                        }
+                        className={`${
+                          isMyGuesses
+                            ? getUserMatchPoints(item).messageIfGuessIsNull ===
+                              "Palpite não enviado"
+                              ? new Date(item.DateUtc) < new Date()
+                                ? "bg-transparent" // IF GAME WAS STARTED
+                                : "bg-gray-300" // IF GAME WASN'T START YET
+                              : "bg-gray-300" // IF GUESS WAS SEND
+                            : "bg-gray-300" // IF IS ON A RESULTS SCREEN
+                        } h-10 w-10 rounded text-center text-gray-950 outline-none`}
+                      />
+                      {/* AWAY TEAM BADGE */}
+                      <div className="flex flex-row items-center ml-2">
+                        {competition!.name === "Nations League"
+                          ? getCountryFlag(item.AwayTeam)
+                          : handleClubBadge(item.AwayTeam)}
                       </div>
                     </div>
-                  </div>
-                  {/* ACTION BUTTON (SEND GUESS / UPDATE RESULTS / SHOW POINTS-MESSAGE) */}
-                  {listToShow === "guesses" ? (
-                    <div className="mb-4 flex w-full flex-col items-center justify-center px-4">
-                      {new Date(item.DateUtc) > new Date() ? (
-                        handleValueInputScore(item, "home") === undefined ||
-                        handleValueInputScore(item, "away") === undefined ? (
-                          <button
-                            className="flex w-full items-center justify-center gap-2 rounded bg-red-600 px-2 py-1 outline-none"
-                            onClick={() => updateGuess(item)}
+                    {/* ACTION BUTTON (SEND GUESS / UPDATE RESULTS / SHOW POINTS-MESSAGE) */}
+                    {listToShow === "guesses" ? (
+                      <div className="mb-4 flex w-full flex-col items-center justify-center px-4">
+                        {new Date(item.DateUtc) > new Date() ? (
+                          handleGuessSended(item) ? (
+                            <button
+                              className={`flex w-full items-center justify-center gap-2 rounded ${
+                                isSubmitting &&
+                                fixtureBeingUpdated.current === item.MatchNumber
+                                  ? "bg-yellow-700"
+                                  : "bg-red-600"
+                              } px-2 py-1 outline-none`}
+                            >
+                              <p className="text-xs font-semibold uppercase text-gray-100">
+                                {isSubmitting &&
+                                fixtureBeingUpdated.current === item.MatchNumber
+                                  ? "Enviando palpite..."
+                                  : "Enviar Palpite ?"}
+                              </p>
+                            </button>
+                          ) : (
+                            <div
+                              className={`flex w-full items-center justify-center gap-2 rounded ${
+                                isSubmitting &&
+                                fixtureBeingUpdated.current === item.MatchNumber
+                                  ? "bg-yellow-700"
+                                  : "bg-green-600"
+                              } px-2 py-1 outline-none`}
+                            >
+                              <p className="text-xs font-semibold uppercase text-gray-100">
+                                {isSubmitting &&
+                                fixtureBeingUpdated.current === item.MatchNumber
+                                  ? "Enviando palpite..."
+                                  : "Palpite Enviado"}
+                              </p>
+                              <FaCheck className="text-gray-100" size={10} />
+                            </div>
+                          )
+                        ) : getUserMatchPoints(item).messageIfGuessIsNull ===
+                          "Palpite não enviado" ? (
+                          <div
+                            className={`flex w-full items-center justify-center gap-2 rounded ${
+                              isSubmitting &&
+                              fixtureBeingUpdated.current === item.MatchNumber
+                                ? "bg-yellow-700"
+                                : "bg-gray-400/70"
+                            } px-2 py-1 outline-none`}
                           >
                             <p className="text-xs font-semibold uppercase text-gray-100">
-                              Enviar Palpite ?
+                              Partida iniciada, não é possível palpitar
                             </p>
-                          </button>
-                        ) : (
-                          <div className="flex w-full items-center justify-center gap-2 rounded bg-green-600 px-2 py-1 outline-none">
-                            <p className="text-xs font-semibold uppercase text-gray-100">
-                              Palpite Enviado
-                            </p>
-                            <FaCheck className="text-gray-100" size={10} />
                           </div>
-                        )
-                      ) : getUserMatchPoints(item).messageIfGuessIsNull ===
-                        "Palpite não enviado" ? (
-                        // <p className="text-center text-xs text-gray-950">
-                        //   Partida iniciada, não é possível palpitar
-                        // </p>
-                        <div className="flex w-full items-center justify-center gap-2 rounded bg-gray-400/70 px-2 py-1 outline-none">
-                          <p className="text-xs font-semibold uppercase text-gray-100">
-                            Partida iniciada, não é possível palpitar
-                          </p>
+                        ) : (
+                          <div
+                            className={`flex w-full items-center justify-center gap-2 rounded ${
+                              isSubmitting &&
+                              fixtureBeingUpdated.current === item.MatchNumber
+                                ? "bg-yellow-700"
+                                : "bg-teal-600"
+                            } px-2 py-1 outline-none`}
+                          >
+                            <p className="text-center text-xs font-semibold uppercase text-gray-100">
+                              {getUserMatchPoints(item).messageIfGuessIsNull ===
+                              ""
+                                ? getUserMatchPoints(item).points > 1
+                                  ? `Pontuação: ${getUserMatchPoints(item).points} pontos`
+                                  : getUserMatchPoints(item).points === 1
+                                    ? `Pontuação: ${getUserMatchPoints(item).points} ponto`
+                                    : `Pontuação: 0`
+                                : `Pontuação: 0`}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      userData?.role === "admin" && (
+                        <div className="mb-4 flex w-full flex-col items-center justify-center px-4">
+                          {handleResultsSended(item) ? (
+                            <button
+                              className={`flex w-full items-center justify-center gap-2 rounded ${
+                                isSubmitting &&
+                                fixtureBeingUpdated.current === item.MatchNumber
+                                  ? "bg-yellow-700"
+                                  : "bg-red-600"
+                              } px-2 py-1 outline-none`}
+                            >
+                              <p className="text-xs font-semibold uppercase text-gray-100">
+                                {isSubmitting &&
+                                fixtureBeingUpdated.current === item.MatchNumber
+                                  ? "Enviando resultado..."
+                                  : "Atualizar Resultado ?"}
+                              </p>
+                            </button>
+                          ) : (
+                            <div
+                              className={`flex w-full items-center justify-center gap-2 rounded ${
+                                isSubmitting &&
+                                fixtureBeingUpdated.current === item.MatchNumber
+                                  ? "bg-yellow-700"
+                                  : "bg-green-600"
+                              } px-2 py-1 outline-none`}
+                            >
+                              <p className="text-xs font-semibold uppercase text-gray-100">
+                                {isSubmitting &&
+                                fixtureBeingUpdated.current === item.MatchNumber
+                                  ? "Enviando resultado..."
+                                  : "Resultado Atualizado"}
+                              </p>
+                              <FaCheck className="text-gray-100" size={10} />
+                            </div>
+                          )}
                         </div>
-                      ) : (
-                        // <p className="text-center text-xs font-semibold text-gray-950">Faça já o seu palpite</p>
-
-                        <div className="flex w-full items-center justify-center gap-2 rounded bg-teal-600 px-2 py-1 outline-none">
-                          <p className="text-center text-xs font-semibold uppercase text-gray-100">
-                            {getUserMatchPoints(item).messageIfGuessIsNull ===
-                            ""
-                              ? getUserMatchPoints(item).points > 1
-                                ? `Pontuação: ${getUserMatchPoints(item).points} pontos`
-                                : getUserMatchPoints(item).points === 1
-                                  ? `Pontuação: ${getUserMatchPoints(item).points} ponto`
-                                  : `Pontuação: 0`
-                              : `Pontuação: 0`}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  ) : userData?.role === "admin" ? (
-                    <div className="mb-4 flex w-full flex-col items-center justify-center px-4">
-                      {handleValueFixtureInputScore(item, "home") ===
-                        undefined ||
-                      handleValueFixtureInputScore(item, "away") ===
-                        undefined ? (
-                        <button
-                          className="flex w-full items-center justify-center gap-2 rounded bg-red-600 px-2 py-1 outline-none"
-                          onClick={() => updateResult(item)}
-                        >
-                          <p className="text-xs font-semibold uppercase text-gray-100">
-                            Atualizar Resultado ?
-                          </p>
-                        </button>
-                      ) : (
-                        <div className="flex w-full items-center justify-center gap-2 rounded bg-green-600 px-2 py-1 outline-none">
-                          <p className="text-xs font-semibold uppercase text-gray-100">
-                            Resultado Atualizado
-                          </p>
-                          <FaCheck className="text-gray-100" size={10} />
-                        </div>
-                      )}
-                    </div>
-                  ) : null}
-                </div>
+                      )
+                    )}
+                  </form>
+                </>
               ))}
           </div>
         )}

@@ -1,274 +1,357 @@
-/* eslint-disable react-hooks/exhaustive-deps */
-import { createContext, useEffect, useRef, useState } from "react";
-
-import { signOut, User } from "firebase/auth";
-import { useAuthState } from "react-firebase-hooks/auth";
-import { getFirestore } from "firebase/firestore";
-
-import { app, auth, initFirebase } from "../utils/firebase";
-import {
-  CreateLeagueProps,
-  FixturesProps,
-  GlobalDataContextType,
-  GuessesProps,
-  SetPageProps,
-} from "../@types";
+import { memo, useContext, useState } from "react";
+import memoize from "memoize-one";
+import { v4 as uuidV4 } from "uuid";
+import { FixedSizeList as List, areEqual } from "react-window";
+import { formatInTimeZone } from "date-fns-tz";
+import { ptBR } from "date-fns/locale";
+import { getCode } from "country-list";
+import Flag from "react-world-flags";
+import { FixturesProps, GlobalDataContextType, GuessesProps } from "../@types";
+import { FaCheck } from "react-icons/fa";
+import withReactContent from "sweetalert2-react-content";
+import Swal from "sweetalert2";
+import { GlobalDataContext } from "../context/GlobalDataContext";
 import { toast } from "sonner";
-import { useConvex, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { ConvexReactClient } from "convex/react";
 import { Doc, Id } from "../../convex/_generated/dataModel";
 
-export const GlobalDataContext = createContext<GlobalDataContextType | null>(
-  null
-);
+type MemoDataProps = {
+  items: FixturesProps[];
+  convex: ConvexReactClient;
+  competition: Doc<"leagues"> | null | undefined;
+  receivedInputGuesses: GuessesProps[];
+  isMyGuesses: boolean;
+  listToShow: "guesses" | "results" | "ranking";
+  userData:
+    | {
+        _id: Id<"users">;
+        _creationTime: number;
+        leagues: {
+          id: Id<"leagues"> | null;
+          guesses: {
+            AwayTeamScore: number | null;
+            HomeTeamScore: number | null;
+            MatchNumber: number;
+            RoundNumber: number;
+            points: number;
+          }[];
+          totalPoints: number;
+        }[];
+        name: string | null;
+        email: string | null;
+        phone: string | null;
+        photo: string | null;
+        role: string;
+      }
+    | null
+    | undefined;
+};
 
-interface PostsContextProviderProps {
-  children: JSX.Element | JSX.Element[];
-}
+type MemoProps = {
+  index: number;
+  data: MemoDataProps;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  style: any;
+};
 
-// INITIALIZING FIRESTORE DB
-const db = getFirestore(app);
+const PADDING_TOP = 192;
 
-export const GlobalDataProvider = ({ children }: PostsContextProviderProps) => {
-  // INITIALIZING FIREBASE AND FIREBASE ADMIN
-  initFirebase();
+const Row = memo(({ data, index, style }: MemoProps) => {
+  const {
+    items,
+    convex,
+    competition,
+    listToShow,
+    receivedInputGuesses,
+    isMyGuesses,
+    userData,
+  } = data;
 
-  // CONVEX HOOK TO USE QUERY INSIDE FUNCTION
-  const convex = useConvex();
+  const item = items[index];
 
-  // USER AUTH STATE
-  const [user] = useAuthState(auth);
+  const ConfirmationAlert = withReactContent(Swal);
 
-  // LOGIN/REGISTER STATE
-  const [login, setLogin] = useState(true);
+  const [inputResults, setInputResults] = useState<FixturesProps[]>(items);
 
-  // USER LOGGED STATE
-  const [logged, setLogged] = useState(false);
+  const [inputGuesses, setInputGuesses] =
+    useState<GuessesProps[]>(receivedInputGuesses);
 
-  // OPEN MODAL INFO STATE
-  const [openModal, setOpenModal] = useState(false);
+  const [guessSent, setGuessSent] = useState(
+    receivedInputGuesses[index].HomeTeamScore === null &&
+      receivedInputGuesses[index].AwayTeamScore === null
+      ? false
+      : true
+  );
 
-  // LOADING STATE
-  const [loading, setLoading] = useState(true);
+  const [resultSent, setResultSent] = useState(
+    items[index].HomeTeamScore === null && items[index].AwayTeamScore === null
+      ? false
+      : true
+  );
 
-  // PAGE STATE
-  const [page, setPage] = useState<SetPageProps>({
-    prev: "home",
-    // "home" ||
-    //   "settings" ||
-    //   "poolPage" ||
-    //   "searchPool" ||
-    //   "dashboard" ||
-    //   "createLeague" ||
-    //   "deleteLeague" ||
-    //   "updateLeaguePoints",
-    show: "home",
-    // "home" ||
-    // "settings" ||
-    // "poolPage" ||
-    // "searchPool" ||
-    // "dashboard" ||
-    // "createLeague" ||
-    // "deleteLeague" ||
-    // "updateLeaguePoints",
-  });
+  async function updateGuess(item: FixturesProps) {
+    const guess = inputGuesses.find(
+      (userGuess) => userGuess.MatchNumber === item.MatchNumber
+    );
 
-  // LOGGED USER DATA STATE
-  const [userData, setUserData] = useState<Doc<"users">>();
-
-  // DATABASE USERS DATA STATE
-  const [dbUsersData, setDbUsersData] = useState<
-    Doc<"users">[] | null | undefined
-  >();
-
-  // DATABASE LEAGUES DATA STATE
-  const [dbLeaguesData, setDbLeaguesData] = useState<
-    Doc<"leagues">[] | null | undefined
-  >();
-
-  // GETTING DATABASE USERS DATA FUNCTION
-  async function handleDbData() {
-    const downloadedUsersData = await convex.query(api.dbRoot.getUsers);
-    const downloadedLeaguesData = await convex.query(api.dbRoot.getLeagues);
-    if (downloadedLeaguesData) {
-      setDbLeaguesData(downloadedLeaguesData);
-    }
-    if (downloadedUsersData) {
-      setDbUsersData(downloadedUsersData);
-      return downloadedUsersData;
-    } else {
-      setDbUsersData([]);
-      return downloadedUsersData;
-    }
-  }
-
-  // LOGGED USER DATA LEAGUES/POOLS
-  const [userPools, setUserPools] = useState<
-    Doc<"leagues">[] | undefined | null
-  >();
-
-  // FILLED GUESSES STATE
-  const [filledGuesses, setFilledGuesses] = useState(false);
-
-  // HANDLE USERPOOLS FUNCTION
-  async function handleUserPools() {
-    if (userData) {
-      await convex
-        .query(api.functions.getUserPools, { leagues: userData.leagues })
-        .then((userPoolsResponse) => {
-          if (userPoolsResponse) {
-            setUserPools(userPoolsResponse);
+    if (guess) {
+      ConfirmationAlert.fire({
+        title: "Você tem certeza?",
+        text: "Não vai ser possível modificar o palpite!",
+        icon: "warning",
+        showCancelButton: true,
+        cancelButtonColor: "#d33",
+        confirmButtonColor: "#0d9488",
+        confirmButtonText: "Sim, confirmar!",
+      }).then(async (result) => {
+        if (result.isConfirmed) {
+          if (
+            guess.HomeTeamScore === null ||
+            guess.AwayTeamScore === null ||
+            isNaN(guess.HomeTeamScore) === true ||
+            isNaN(guess.AwayTeamScore) === true
+          ) {
+            return toast.error(
+              `Palpite inválido, verifique o jogo ${item.HomeTeam} vs ${item.AwayTeam}`
+            );
+          } else {
+            const guessToUpdate = {
+              leagueId: competition!._id,
+              guess: guess,
+            };
+            convex
+              .mutation(api.functions.updateOneGuess, {
+                userId: userData!._id,
+                guess: guessToUpdate,
+              })
+              .then(() => {
+                toast.success("Palpite enviado! Agora é torcer! 👌");
+                setGuessSent(true);
+              });
           }
-        })
-        .then(() => {
-          setPage({ show: "home", prev: "home" });
-        })
-        .catch((error) => {
-          console.log(error);
-        });
-    } else {
-      toast.error(
-        "Não foi possível atualizar os dados, contate a administração. 🤯"
-      );
-    }
-  }
-
-  // HANDLE USER FUNCTION
-  async function handleUser(
-    user: User,
-    downloadedUsersData: Doc<"users">[] | undefined | null
-  ) {
-    if (downloadedUsersData) {
-      const userResponse = downloadedUsersData.find(
-        (dbUserData) => dbUserData.id === user.uid
-      );
-      // const userResponse = await convex.query(api.functions.findUser, {
-      //   // PEGAR DO STATE, NÃO DO BANCO
-      //   id: user.uid,
-      //   type: "idString",
-      // });
-      if (userResponse) {
-        if (userResponse) {
-          setUserData(userResponse);
-          setLogged(true);
-          setIsSubmitting(false);
-          toast.success(`Bem-vindo, ${userResponse.name}! 👌`);
-        }
-        setLogin(false);
-      } else {
-        toast.error(
-          "Não foi possível fazer o login, contate a administração. 🤯"
-        );
-      }
-    } else {
-      toast.error(
-        "Não foi possível fazer o login, contate a administração. 🤯"
-      );
-    }
-  }
-
-  // HANDLE USER WITHOUT TOAST => TO USE WHEN USER REFRESH PAGE
-  async function handleUserWhithoutToast(
-    user: User,
-    downloadedUsersData: Doc<"users">[] | undefined | null
-  ) {
-    if (downloadedUsersData) {
-      const userResponse = downloadedUsersData.find(
-        (dbUserData) => dbUserData.id === user.uid
-      );
-      // const userResponse = await convex.query(api.functions.findUser, {
-      //   // PEGAR DO STATE, NÃO DO BANCO
-      //   id: user.uid,
-      //   type: "idString",
-      // });
-      if (userResponse) {
-        setUserData(userResponse);
-        setLogged(true);
-        setIsSubmitting(false);
-        setLogin(false);
-      } else {
-        toast.error(
-          "Não foi possível buscar os dados, contate a administração. 🤯"
-        );
-      }
-    } else {
-      toast.error(
-        "Não foi possível buscar os dados aqui, contate a administração. 🤯"
-      );
-    }
-  }
-
-  // MONITORING USER LOGIN
-  useEffect(() => {
-    setIsSubmitting(true);
-    if (!user) {
-      setLogged(false);
-      setIsSubmitting(false);
-    }
-
-    if (user && !userData) {
-      // setIsSubmitting(true);
-      handleDbData().then((downloadedUsersData) => {
-        if (downloadedUsersData) {
-          handleUserWhithoutToast(user, downloadedUsersData);
         } else {
-          console.log(
-            "Erro ao obter os usuários do banco de dados (downloadedUsersData): ",
-            downloadedUsersData
+          return toast.warning(
+            "Parabéns por pensar um pouco mais... Afinal, que palpite era aquele? 😂😂😂 #brinks"
           );
-          toast.error(
-            "Erro ao verificar usuário no banco de dados. Tente com e-mail e senha..."
-          );
-          setIsSubmitting(false);
         }
       });
-    }
-
-    if (user && userData) {
-      setLogged(true);
-      setIsSubmitting(false);
-    }
-  }, [user]);
-
-  // MONITORING USER DATA
-  useEffect(() => {
-    if (userData && userData !== null) {
-      handleUserPools()
-        .then(() => {
-          setLogged(true);
-        })
-        .catch((error) => {
-          console.log("Esse é o erro: ", error);
-          toast.error(
-            "Não foi possível fazer o login, contate a administração. 🤯"
-          );
-          setLogged(false);
-        });
     } else {
-      setLogged(false);
+      return toast.error(
+        "Não foi possível computar seu palpite, por favor, contate a Administração... 🤯"
+      );
     }
-  }, [userData]);
-
-  // LOGOUT FUNCTION
-  function handleLogout() {
-    setLogged(false);
-    setPage({ show: "home", prev: "home" });
-    signOut(auth);
-    setLogin(true);
-    toast.success("Já vai? Até mais, então... 👋");
   }
 
-  // GLOBAL SUBMITING STATE
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  async function updateResult(item: FixturesProps) {
+    const fixture = inputResults.find(
+      (fixtureResult) => fixtureResult.MatchNumber === item.MatchNumber
+    );
 
-  // SELECTED POOL (COMPETITION) STATE
-  const [competition, setCompetition] = useState<Doc<"leagues"> | null>();
+    if (fixture) {
+      ConfirmationAlert.fire({
+        title: "Você tem certeza?",
+        text: "Confira o resultado pois pra mudar depois será uma bagunça, e diretamente no banco de dados!",
+        icon: "warning",
+        showCancelButton: true,
+        cancelButtonColor: "#d33",
+        confirmButtonColor: "#0d9488",
+        confirmButtonText: "Sim, confirmar!",
+      }).then(async (result) => {
+        if (result.isConfirmed) {
+          if (
+            fixture.HomeTeamScore === null ||
+            fixture.AwayTeamScore === null ||
+            isNaN(fixture.HomeTeamScore) === true ||
+            isNaN(fixture.AwayTeamScore) === true
+          ) {
+            return toast.error(
+              `Resultado inválido, verifique o jogo ${item.HomeTeam} vs ${item.AwayTeam}`
+            );
+          } else {
+            convex
+              .mutation(api.functions.updateOneFixture, {
+                leagueId: competition!._id,
+                fixture: fixture,
+              })
+              .then(() => {
+                toast.success("Resultado atualizado! 👌");
+                setResultSent(true);
+              });
+          }
+        } else {
+          return toast.warning(
+            "Parabéns por pensar um pouco mais... Afinal, que quem nunca leu errado e vacilou atualizando o banco de dados? 😂😂😂 #brinks"
+          );
+        }
+      });
+    } else {
+      console.log(
+        "Não achou uma partida correspondente no banco de dados para atualizar (inputResults): ",
+        inputResults
+      );
+      return toast.error(
+        "Não foi possível computar o resultado, verifique os logs no console... 🤯"
+      );
+    }
+  }
 
-  const [headerTitle, setHeaderTitle] = useState("");
-  const [headerLeftBackIcon, setHeaderLeftBackIcon] = useState(false);
-  const [headerRightInfoIcon, setHeaderRightInfoIcon] = useState(false);
-  const [showCopyright, setShowCopyright] = useState(false);
-  const [showFooterMenu, setShowFooterMenu] = useState(false);
+  // UPDATE GUESSES STATE FUNCTION
+  function updateStateGuesses(
+    matchNumber: number,
+    teamLocation: "home" | "away",
+    score: string
+  ) {
+    const updatedGuesses = inputGuesses.map((guess) => {
+      if (guess.MatchNumber === matchNumber) {
+        if (teamLocation === "home") {
+          if (score === null || score === "") {
+            return { ...guess, HomeTeamScore: null };
+          } else {
+            return { ...guess, HomeTeamScore: Number(score) };
+          }
+        } else {
+          if (score === null || score === "") {
+            return { ...guess, AwayTeamScore: null };
+          } else {
+            return { ...guess, AwayTeamScore: Number(score) };
+          }
+        }
+      } else {
+        return guess;
+      }
+    });
+
+    setInputGuesses(updatedGuesses);
+  }
+
+  // UPDATE STATE AND FILL INPUT FUNCTION
+  function handleScoreGuess(
+    matchNumber: number,
+    teamLocation: "home" | "away"
+  ) {
+    const scoreGuess = inputGuesses.find((guess) => {
+      if (guess.MatchNumber === matchNumber) {
+        return guess;
+      } else {
+        return "";
+      }
+    });
+    if (teamLocation === "home") {
+      return scoreGuess?.HomeTeamScore?.toString();
+    } else {
+      return scoreGuess?.AwayTeamScore?.toString();
+    }
+  }
+
+  // UPDATE RESULTS STATE FUNCTION
+  function updateStateFixtures(
+    matchNumber: number,
+    teamLocation: "home" | "away",
+    score: string
+  ) {
+    if (inputResults) {
+      const nextResults = inputResults.map((fixture) => {
+        if (fixture.MatchNumber === matchNumber) {
+          if (teamLocation === "home") {
+            if (score === null || score === "") {
+              return { ...fixture, HomeTeamScore: null };
+            } else {
+              return { ...fixture, HomeTeamScore: Number(score) };
+            }
+          } else {
+            if (score === null || score === "") {
+              return { ...fixture, AwayTeamScore: null };
+            } else {
+              return { ...fixture, AwayTeamScore: Number(score) };
+            }
+          }
+        } else {
+          return fixture;
+        }
+      });
+      setInputResults(nextResults);
+    }
+  }
+
+  // UPDATE STATE AND FILL INPUT FUNCTION
+  function handleScoreFixture(
+    matchNumber: number,
+    teamLocation: "home" | "away"
+  ) {
+    if (inputResults) {
+      const scoreFixture = inputResults.find((fixture) => {
+        if (fixture.MatchNumber === matchNumber) {
+          return fixture;
+        } else {
+          return "";
+        }
+      });
+      if (teamLocation === "home") {
+        return scoreFixture?.HomeTeamScore?.toString();
+      } else {
+        return scoreFixture?.AwayTeamScore?.toString();
+      }
+    }
+  }
+
+  function getUserMatchPoints(item: FixturesProps) {
+    if (userData && competition) {
+      const userActiveLeagueIndex = userData.leagues.findIndex(
+        (league) => league.id === competition._id
+      );
+      if (userActiveLeagueIndex !== -1) {
+        const userDataLeague = userData.leagues[userActiveLeagueIndex].guesses;
+        if (userDataLeague) {
+          const guessIndex = userDataLeague.findIndex(
+            (guess) => guess.MatchNumber === item.MatchNumber
+          );
+          if (guessIndex !== -1) {
+            if (
+              userDataLeague[guessIndex].HomeTeamScore === null ||
+              userDataLeague[guessIndex].AwayTeamScore === null
+            ) {
+              const dataReturn = {
+                messageIfGuessIsNull: "Palpite não enviado",
+                points: userDataLeague[guessIndex].points,
+              };
+              return dataReturn;
+            } else {
+              const dataReturn = {
+                messageIfGuessIsNull: "",
+                points: userDataLeague[guessIndex].points,
+              };
+              return dataReturn;
+            }
+          } else {
+            const dataReturn = {
+              messageIfGuessIsNull: "",
+              points: -1,
+            };
+            return dataReturn;
+          }
+        } else {
+          const dataReturn = {
+            messageIfGuessIsNull: "",
+            points: -1,
+          };
+          return dataReturn;
+        }
+      } else {
+        const dataReturn = {
+          messageIfGuessIsNull: "",
+          points: -1,
+        };
+        return dataReturn;
+      }
+    } else {
+      const dataReturn = {
+        messageIfGuessIsNull: "",
+        points: -1,
+      };
+      return dataReturn;
+    }
+  }
 
   // TEAM LOGO PATHS
   const teamsLogoPath = [
@@ -545,257 +628,73 @@ export const GlobalDataProvider = ({ children }: PostsContextProviderProps) => {
     },
   ];
 
-  // CREATE LEAGUE FUNCTION
-  const createLeague = async (leagueInfo: CreateLeagueProps) => {
-    await convex
-      .mutation(api.functions.createLeague, leagueInfo)
-      .then(() => {
-        toast.success(`${leagueInfo.name} adicionada com sucesso! 👌`);
-        console.log(`${leagueInfo.name} adicionada com sucesso!`);
-      })
-      .catch((error) => {
-        toast.error("Ocorreu um erro... 🤯");
-        console.log("ESSE É O ERRO", error);
-      });
-  };
-
-  // DELETE LEAGUE FUNCTION
-  const deleteLeague = async (leagueId: Id<"leagues">) => {
-    await convex
-      .mutation(api.functions.deleteLeague, { id: leagueId })
-      .then(() => {
-        toast.success("Liga deletada com sucesso! 👌");
-        console.log(`Liga deletada com sucesso!`);
-      })
-      .catch((error) => {
-        toast.error("Ocorreu um erro... 🤯");
-        console.log("ESSE É O ERRO", error);
-      });
-  };
-
-  // HEADER CUSTOMIZE
-  function onHeaderCustomize(
-    title: string,
-    leftBackIcon: boolean,
-    rightInfoIcon: boolean
-  ) {
-    if (leftBackIcon) {
-      setHeaderLeftBackIcon(true);
-    } else {
-      setHeaderLeftBackIcon(false);
-    }
-    if (rightInfoIcon) {
-      setHeaderRightInfoIcon(true);
-    } else {
-      setHeaderRightInfoIcon(false);
-    }
-    setHeaderTitle(title);
-  }
-
-  // FOOTER CUSTOMIZE
-  function onFooterCustomize(copyright: boolean, menu: boolean) {
-    if (copyright) {
-      setShowCopyright(true);
-    } else {
-      setShowCopyright(false);
-    }
-    if (menu) {
-      setShowFooterMenu(true);
-    } else {
-      setShowFooterMenu(false);
-    }
-  }
-
-  // ------------------------------- POOL PAGE STATES AND FUNCTIONS --------------------------- //
-
-  const [roundSelected, setRoundSelected] = useState<number | undefined>();
-  const [allRounds, setAllRounds] = useState<number[]>([]);
-  const [fixturesToShow, setFixturesToShow] = useState<FixturesProps[]>([]);
-  const [listToShow, setListToShow] = useState<
-    "guesses" | "results" | "ranking"
-  >("guesses");
-  const [isMyGuesses, setIsMyGuesses] = useState(true);
-
-  // const inputGuesses = useRef<GuessesProps[]>([]);
-  const [inputGuesses, setInputGuesses] = useState<GuessesProps[]>([]);
-  const emptyInputGuesses = useRef(0);
-
-  // SETTING ALL ROUNDS OF COMPETITION
-  useEffect(() => {
-    if (userData && userData.leagues !== null && competition) {
-      const selectedFixtures = competition.games;
-      if (selectedFixtures !== null) {
-        const roundsArray: number[] = [];
-        setLoading(true);
-        for (let index = 0; index < selectedFixtures.length; index++) {
-          const roundExist = roundsArray.findIndex(
-            (round) => round === selectedFixtures[index].RoundNumber
-          );
-          if (roundExist < 0) {
-            roundsArray.push(selectedFixtures[index].RoundNumber);
-          }
-        }
-        const initialRoundSelected = selectedFixtures.find(
-          (fixture) => new Date(fixture.DateUtc) > new Date()
-        );
-        if (initialRoundSelected) {
-          setRoundSelected(initialRoundSelected.RoundNumber);
-        } else {
-          setRoundSelected(roundsArray.length - 1);
-        }
-        setAllRounds(roundsArray);
-        setLoading(false);
-      }
-    }
-  }, [userData, competition]);
-
-  // HANDLE FIXTURES BY ROUND FUNCTION
-  async function updateFixturesToShow() {
-    const fixturesArray: FixturesProps[] = [];
-    const guessesArray: GuessesProps[] = [];
-    if (listToShow !== "ranking") {
-      if (competition && userData) {
-        setLoading(true);
-        const userGuessesFixtures = await convex.query(
-          api.functions.getUserPoolGuesses,
-          {
-            userId: userData._id,
-            leagueId: competition._id,
-          }
-        );
-        const selectedFixtures = competition.games;
-        if (selectedFixtures !== null && userGuessesFixtures !== null) {
-          const userGuessesFixturesOrdered = userGuessesFixtures.sort(
-            (a, b) => a.MatchNumber - b.MatchNumber
-          );
-          const selectedFixturesOrdered = selectedFixtures.sort(
-            (a, b) => a.MatchNumber - b.MatchNumber
-          );
-          userGuessesFixturesOrdered.map((fixture, index) => {
-            if (
-              selectedFixturesOrdered[index] &&
-              selectedFixturesOrdered[index].RoundNumber === roundSelected
-            ) {
-              fixturesArray.push(selectedFixturesOrdered[index]);
-              guessesArray.push({
-                MatchNumber: selectedFixturesOrdered[index].MatchNumber,
-                HomeTeamScore: fixture.HomeTeamScore,
-                AwayTeamScore: fixture.AwayTeamScore,
-                RoundNumber: selectedFixturesOrdered[index].RoundNumber,
-                points: 0,
-              });
-            }
-          });
-          const orderedFixturesArray = fixturesArray.sort(function (a, b) {
-            if (a.DateUtc === b.DateUtc) {
-              return a.MatchNumber - b.MatchNumber;
-            } else {
-              return Number(new Date(a.DateUtc) < new Date(b.DateUtc));
-            }
-          });
-          setFixturesToShow(orderedFixturesArray);
-          setLoading(false);
-          setInputGuesses(guessesArray);
-        }
-      }
-    } else {
-      setFixturesToShow([]);
-    }
-  }
-
-  // MONITORING SELECTED ROUND
-  useEffect(() => {
-    updateFixturesToShow();
-  }, [roundSelected, competition]);
-
-  // TOGGLE MENU GUESSES - RESULTS - RANKING
-  function toggleGuessesResultsRanking(
-    option: "guesses" | "results" | "ranking"
-  ) {
-    if (option === "guesses") {
-      setListToShow("guesses");
-      setIsMyGuesses(true);
-    } else if (option === "results") {
-      setListToShow("results");
-      setIsMyGuesses(false);
-    } else if (option === "ranking") {
-      setListToShow("ranking");
-      setIsMyGuesses(false);
-    }
-  }
-
   // HANDLE CLUB BADGES FUNCTION
   function handleClubBadge(clubName: string) {
     const teamName = teamsLogoPath.find(({ name }) => name === clubName);
     return <img src={teamName?.url} className="h-10 w-10 object-contain" />;
   }
 
-  // UPDATE GUESSES STATE FUNCTION
-  function updateStateGuesses(
-    matchNumber: number,
-    teamLocation: "home" | "away",
-    score: string
-  ) {
-    const updatedGuesses = inputGuesses.map((guess) => {
-      if (guess.MatchNumber === matchNumber) {
-        if (teamLocation === "home") {
-          if (score === null || score === "") {
-            return { ...guess, HomeTeamScore: null };
-          } else {
-            return { ...guess, HomeTeamScore: Number(score) };
-          }
-        } else {
-          if (score === null || score === "") {
-            return { ...guess, AwayTeamScore: null };
-          } else {
-            return { ...guess, AwayTeamScore: Number(score) };
-          }
-        }
-      } else {
-        return guess;
-      }
-    });
-
-    setInputGuesses(updatedGuesses);
-  }
-
-  // VALUE INPUT SCORE FUNCTION
-  function handleValueInputScore(
-    item: FixturesProps,
-    teamLocation: "home" | "away"
-  ) {
-    if (teamLocation === "home") {
-      return handleScoreGuess(item.MatchNumber, "home");
+  // IF NATIONAL COMPETITION GET NATION FLAG
+  function getCountryFlag(countryName: string) {
+    let countryCode;
+    if (countryName === "Republic of Ireland") {
+      countryCode = "IE";
+    } else if (countryName === "England") {
+      countryCode = "GB_ENG";
+    } else if (countryName === "Moldova") {
+      countryCode = "MD";
+    } else if (countryName === "Kosovo") {
+      countryCode = "XK";
+    } else if (countryName === "Wales") {
+      countryCode = "GB_WLS";
+    } else if (countryName === "Scotland") {
+      countryCode = "GB_SCT";
+    } else if (countryName === "Northern Ireland") {
+      return (
+        <img
+          src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAA6CAMAAABWFo0JAAABI1BMVEX////MAADLAADVVFTTR0fIAADEAADx8fL09PTUPj6yNjbEp6fs8/PZV1e/AADOwsLg4OCzTk7W1ta6hISzAADWzMynAAC2iYmvKSn4//+wdnayRESzYWGvRQCiJQC5EwDFmwC0dAKnZQO/cHWxV1/AEx+2IQD/2wD80wDALjSzT1W1aG+9en+znGK6cwCyhCawnHehcXq8nzqslEOgeISrjWu7nljGx8u6tp6+TAC7OQC0bQ6Whl6FcEPCupu0rYSEEBWdExqXf0+DWzqfAAaWSQCiSxibNxmjjk6ObD6wDB+oNB2ePACtjCqmcAzLkgC3jAugegB7UwmNWgqPYgC1jT2qYk5mLwvUrQdpdjPvxAB+Zi+YeCrtyDjIt3nf0anGbmcaAr7DAAACJUlEQVRYhe2YXXOTQBSGd5FlSUg3sAHSkNqmjcba1lbjBzFVE2qsmtoG0tgvbfT//wp3abB3ziwzOd7wXrALM5xn9nB4zwJCOaRreCFNz3N/LhXQpUPJw3UCDt1otTbAocbmllgphoO2g0ePO0+22dOd3T0oJn+2f/D8Rfflq9cH+29CIGjvLSb9w3fvD/sG7n8wQZh00PGHkX/00Y+Go86AwkB7n6Ljz9GXr+OT4/G3HgwU8dPhZutsMtmaxNEph2Eis5vE0/M4nk3PZt+BmAhdzC6TaZxMk8vZBRhUT66ub378vLm+igEd6eR2Pv81mHdv1+GgpVpoh5SKw+8SGFQnzbaoWu64sIZflmMTtMtg4smxSiC6DKXUFF5bkgv1dhuojMUzNU1xeYnQSmjbNudWzUPByI0aXs3iXFwKK2pxHqhoxclus0Y+Y3Z25qwohUGaknA9w/i+y7zFSR2rRUFYTWxh8GVXQKt3c84Ug6hC8WojBY0Ek1hIJrixqhpDGYqDtKLSxdUdme1AOYQ61JBJ5YacDpmo2qoBBfXk9pP5YwQETdObrpThNoJJ710hVVw5J2n5Lr+QslemLuZakPeVyWkO8qGS3OaQ0wZFg8HG352gqg0q6d7wac2yLDOv4SuJmvetTSprbSbAjltf1C1ME8+gGm7KEXa7omFDVK5nQH+Jizp24D//ubRC6F86a2sYHkrIf4CmKqAFtIAW0AJaQP+hPwDUOOwnptfFAAAAAElFTkSuQmCC"
+          className="h-10 w-10 object-contain"
+        />
+      );
     } else {
-      return handleScoreGuess(item.MatchNumber, "away");
+      countryCode = getCode(countryName);
     }
+    return <Flag code={countryCode} className="h-10 w-10 object-contain" />;
   }
 
-  // UPDATE STATE AND FILL INPUT FUNCTION
-  function handleScoreGuess(
-    matchNumber: number,
-    teamLocation: "home" | "away"
-  ) {
-    const scoreGuess = inputGuesses.find((guess) => {
-      if (guess.MatchNumber === matchNumber) {
-        return guess;
-      } else {
-        return "";
-      }
-    });
-    if (teamLocation === "home") {
-      return scoreGuess?.HomeTeamScore?.toString();
-    } else {
-      return scoreGuess?.AwayTeamScore?.toString();
+  // CUSTOMIZING BORDER COLOR ACCORDING TO THE COMPETITION
+  const chooseBorderCardColor = (name: string) => {
+    if (name === "Premier League") {
+      return "border-purple-800";
     }
-  }
+    if (name === "Champions League") {
+      return "border-blue-900";
+    }
+    if (name === "FA Cup") {
+      return "border-red-600";
+    }
+    if (name === "Carabao Cup") {
+      return "border-green-700";
+    }
+    if (name === "Nations League") {
+      return "border-amber-500";
+    }
+    if (
+      name !== "premierLeague2425" &&
+      name !== "ucl2425" &&
+      name !== "faCup2425" &&
+      name !== "carabaoCup2425"
+    ) {
+      return "border-red-600";
+    }
+  };
 
   // CHANGE BORDER AND CARD COLOR IF LIVERPOOL ARE IN GAME
   const chooseBorderBgCardColor = (home: string, away: string) => {
     if (home === "Liverpool" || away === "Liverpool") {
       return "border-red-600 bg-red-100/50";
     } else {
-      return "border-gray-500 bg-gray-200/50";
+      return `${chooseBorderCardColor(competition!.name)} bg-gray-200/50`;
     }
   };
 
@@ -804,181 +703,385 @@ export const GlobalDataProvider = ({ children }: PostsContextProviderProps) => {
     if (home === "Liverpool" || away === "Liverpool") {
       return "text-red-600";
     } else {
-      return "text-gray-700";
+      return chooseTextCompetitionColor(competition!.name);
     }
   };
 
-  const allLeagues = useQuery(api.functions.listLeagues);
-
-  const userAllGuesses = useQuery(api.functions.getUserGuesses, {
-    userId: user ? user.uid : "6vumNTS0lLgjmmPRfYu5LtofaPs2",
-  });
-
-  useEffect(() => {
-    console.log(userAllGuesses);
-  }, [userAllGuesses]);
-
-  // UPDATE ALL USER POINTS FUNCTION
-  async function updatePoints() {
-    if (allLeagues && allLeagues.length > 0) {
-      setIsSubmitting(true);
-      allLeagues.map((league) => {
-        const leagueParticipants = league.participants;
-        if (leagueParticipants.length > 0) {
-          leagueParticipants.map(async (participant) => {
-            const userData = dbUsersData!.find(
-              (dbUserData) => dbUserData._id === participant
-            );
-            if (userData && userData.leagues) {
-              // FINDING LEAGUE INDEX
-              const foundedLeagueIndex = userData.leagues.findIndex(
-                (userLeague) => userLeague.id === league._id
-              );
-              if (foundedLeagueIndex !== -1) {
-                const userCompetitionGuesses =
-                  userData.leagues[foundedLeagueIndex];
-                userCompetitionGuesses.guesses.forEach((guess) => {
-                  if (
-                    guess.HomeTeamScore !== null &&
-                    guess.AwayTeamScore !== null
-                  ) {
-                    const foundedCompetitionGameIndex = league.games.findIndex(
-                      (game) =>
-                        game.MatchNumber === guess.MatchNumber &&
-                        new Date(game.DateUtc) < new Date()
-                    );
-                    if (foundedCompetitionGameIndex !== -1) {
-                      const officialHomeResult =
-                        league.games[foundedCompetitionGameIndex].HomeTeamScore;
-                      const officialAwayResult =
-                        league.games[foundedCompetitionGameIndex].AwayTeamScore;
-                      const userGuessHomeResult = guess.HomeTeamScore;
-                      const userGuessAwayResult = guess.AwayTeamScore;
-                      if (
-                        officialHomeResult !== null &&
-                        officialAwayResult !== null
-                      ) {
-                        if (
-                          userGuessHomeResult !== null &&
-                          userGuessAwayResult !== null
-                        ) {
-                          if (
-                            officialHomeResult === userGuessHomeResult &&
-                            officialAwayResult === userGuessAwayResult
-                          ) {
-                            guess.points = 3;
-                          } else {
-                            const officialResultSum =
-                              officialHomeResult < officialAwayResult;
-                            const userGuessSum =
-                              userGuessHomeResult < userGuessAwayResult;
-                            if (officialResultSum === userGuessSum) {
-                              guess.points = 1;
-                            } else {
-                              guess.points = 0;
-                            }
-                          }
-                        } else {
-                          guess.points = 0;
-                        }
-                      }
-                    }
-                  }
-                });
-                let totalPointsSum = 0;
-                userCompetitionGuesses.guesses.map((guess) => {
-                  totalPointsSum = totalPointsSum + guess.points;
-                });
-                await convex
-                  .mutation(api.functions.updateDbUserGuesses, {
-                    league: {
-                      id: league._id,
-                      guesses: userCompetitionGuesses.guesses,
-                      totalPoints: totalPointsSum,
-                    },
-                    userId: userData!._id,
-                  })
-                  .then(() => {
-                    toast.success(
-                      `Resultados de ${userData.name} atualizados, confira os pontos! 👌`
-                    );
-                  })
-                  .catch((error) => {
-                    toast.error("Ocorreu um erro... 🤯");
-                    console.log("ESSE É O ERRO", error);
-                  });
-              } else console.log("não deu");
-            }
-          });
-        }
-      });
-      setIsSubmitting(false);
+  // CUSTOMIZING TEXT COLOR ACCORDING TO THE COMPETITION
+  const chooseTextCompetitionColor = (name: string) => {
+    if (name === "Premier League") {
+      return "text-purple-900";
     }
-  }
+    if (name === "Champions League") {
+      return "text-blue-900";
+    }
+    if (name === "FA Cup") {
+      return "text-red-900";
+    }
+    if (name === "Carabao Cup") {
+      return "text-green-900";
+    }
+    if (name === "Nations League") {
+      return "text-amber-900";
+    }
+    if (
+      name !== "premierLeague2425" &&
+      name !== "ucl2425" &&
+      name !== "faCup2425" &&
+      name !== "carabaoCup2425"
+    ) {
+      return "text-gray-950";
+    }
+  };
 
   return (
-    <GlobalDataContext.Provider
-      value={{
-        allLeagues,
-        allRounds,
-        auth,
-        convex,
-        competition,
-        db,
-        dbLeaguesData,
-        dbUsersData,
-        emptyInputGuesses,
-        filledGuesses,
-        fixturesToShow,
-        headerTitle,
-        headerLeftBackIcon,
-        headerRightInfoIcon,
-        inputGuesses,
-        isMyGuesses,
-        isSubmitting,
-        listToShow,
-        loading,
-        login,
-        logged,
-        openModal,
-        page,
-        roundSelected,
-        showCopyright,
-        showFooterMenu,
-        teamsLogoPath,
-        user,
-        userAllGuesses,
-        userData,
-        userPools,
-
-        chooseBorderBgCardColor,
-        chooseTextCardColor,
-        createLeague,
-        deleteLeague,
-        handleClubBadge,
-        handleDbData,
-        handleLogout,
-        handleUser,
-        handleUserPools,
-        handleValueInputScore,
-        onFooterCustomize,
-        onHeaderCustomize,
-        setCompetition,
-        setDbUsersData,
-        setFilledGuesses,
-        setInputGuesses,
-        setIsSubmitting,
-        setOpenModal,
-        setLoading,
-        setLogin,
-        setPage,
-        setRoundSelected,
-        toggleGuessesResultsRanking,
-        updateStateGuesses,
-        updatePoints,
+    <div
+      
+      key={uuidV4()}
+      style={{
+        ...style,
+        top: `${parseFloat(style.top) + PADDING_TOP}px`,
       }}
     >
-      {children}
-    </GlobalDataContext.Provider>
+      <div
+        className={`flex w-full flex-col items-center justify-center rounded-md border-b-2 ${chooseBorderBgCardColor(
+          item.HomeTeam,
+          item.AwayTeam
+        )}`}
+      >
+        {/* TEAMS AND DATE */}
+        <div className="my-4 flex w-full flex-col">
+          <p
+            className={`w-full text-center text-sm font-bold ${chooseTextCardColor(
+              item.HomeTeam,
+              item.AwayTeam
+            )}`}
+          >
+            {item.HomeTeam} vs {item.AwayTeam}
+          </p>
+          <p
+            className={`w-full text-center text-xs ${chooseTextCardColor(
+              item.HomeTeam,
+              item.AwayTeam
+            )}`}
+          >
+            {`${item.Location}, ${formatInTimeZone(
+              item.DateUtc,
+              "America/Sao_Paulo",
+              "dd 'de' MMMM 'de' yyyy 'às' HH:mm",
+              { locale: ptBR }
+            )}`}
+          </p>
+        </div>
+        {/* TEAMS BADGES AND SCORE INPUT */}
+        <div className="mb-4 flex w-full flex-row items-center justify-center">
+          <div className="flex w-full flex-row items-center justify-center">
+            <div className="flex flex-row items-center justify-end">
+              <div className="flex flex-row items-center gap-2 px-2">
+                <div className="flex flex-row items-center">
+                  {competition!.name === "Nations League"
+                    ? getCountryFlag(item.HomeTeam)
+                    : handleClubBadge(item.HomeTeam)}
+                </div>
+              </div>
+              <input
+                hidden={
+                  !isMyGuesses
+                    ? false // IF IS ON A RESULTS SCREEN
+                    : new Date(item.DateUtc) > new Date()
+                      ? false // IF GAME WASN'T START YET
+                      : getUserMatchPoints(item).messageIfGuessIsNull === // IF GAME WAS STARTED
+                          "Palpite não enviado"
+                        ? true // IF GUESS WASN'T SEND
+                        : false // IF GUESS WAS SEND
+                }
+                className={`${
+                  isMyGuesses
+                    ? getUserMatchPoints(item).messageIfGuessIsNull ===
+                      "Palpite não enviado"
+                      ? new Date(item.DateUtc) < new Date()
+                        ? "bg-transparent" // IF GAME WAS STARTED
+                        : "bg-gray-300" // IF GAME WASN'T START YET
+                      : "bg-gray-300" // IF GUESS WAS SEND
+                    : "bg-gray-300" // IF IS ON A RESULTS SCREEN
+                } h-10 w-10 rounded text-center text-gray-950 outline-none`}
+                type="text"
+                id="home-score"
+                value={
+                  isMyGuesses
+                    ? handleScoreGuess(item.MatchNumber, "home")
+                    : handleScoreFixture(item.MatchNumber, "home")
+                }
+                onChange={(event) => {
+                  const score = event.target.value
+                    .replace(/[^0-9.]/g, "")
+                    .replace(/(\..*?)\..*/g, "$1");
+                  if (isMyGuesses) {
+                    updateStateGuesses(item.MatchNumber, "home", score);
+                  } else {
+                    updateStateFixtures(item.MatchNumber, "home", score);
+                  }
+                }}
+                readOnly={
+                  !isMyGuesses
+                    ? handleScoreFixture(item.MatchNumber, "home") === undefined
+                      ? false
+                      : true
+                    : new Date(item.DateUtc) < new Date()
+                      ? true
+                      : handleScoreGuess(item.MatchNumber, "home") !==
+                            undefined && guessSent
+                        ? true
+                        : false
+                }
+              />
+            </div>
+            {/* TEAM SEPARATOR: '-' or 'vs' */}
+            <p className="px-1 text-center text-gray-500">
+              {
+                isMyGuesses
+                  ? getUserMatchPoints(item).messageIfGuessIsNull ===
+                    "Palpite não enviado"
+                    ? new Date(item.DateUtc) < new Date()
+                      ? "vs" // IF GAME WAS STARTED
+                      : "-" // IF GAME WASN'T START YET
+                    : "-" // IF GUESS WAS SEND
+                  : "-" // IF IS ON A RESULTS SCREEN
+              }
+            </p>
+            <div className="flex flex-row items-center justify-start">
+              <input
+                hidden={
+                  !isMyGuesses
+                    ? false // IF IS ON A RESULTS SCREEN
+                    : new Date(item.DateUtc) > new Date()
+                      ? false // IF GAME WASN'T START YET
+                      : getUserMatchPoints(item).messageIfGuessIsNull === // IF GAME WAS STARTED
+                          "Palpite não enviado"
+                        ? true // IF GUESS WASN'T SEND
+                        : false // IF GUESS WAS SEND
+                }
+                className={`${
+                  isMyGuesses
+                    ? getUserMatchPoints(item).messageIfGuessIsNull ===
+                      "Palpite não enviado"
+                      ? new Date(item.DateUtc) < new Date()
+                        ? "bg-transparent" // IF GAME WAS STARTED
+                        : "bg-gray-300" // IF GAME WASN'T START YET
+                      : "bg-gray-300" // IF GUESS WAS SEND
+                    : "bg-gray-300" // IF IS ON A RESULTS SCREEN
+                } h-10 w-10 rounded text-center text-gray-950 outline-none`}
+                type="text"
+                id="away-score"
+                value={
+                  isMyGuesses
+                    ? handleScoreGuess(item.MatchNumber, "away")
+                    : handleScoreFixture(item.MatchNumber, "away")
+                }
+                onChange={(event) => {
+                  const score = event.target.value
+                    .replace(/[^0-9.]/g, "")
+                    .replace(/(\..*?)\..*/g, "$1");
+                  if (isMyGuesses) {
+                    updateStateGuesses(item.MatchNumber, "away", score);
+                  } else {
+                    updateStateFixtures(item.MatchNumber, "away", score);
+                  }
+                }}
+                readOnly={
+                  !isMyGuesses
+                    ? handleScoreFixture(item.MatchNumber, "away") === undefined
+                      ? false
+                      : true
+                    : new Date(item.DateUtc) < new Date()
+                      ? true
+                      : handleScoreGuess(item.MatchNumber, "away") !==
+                            undefined && guessSent
+                        ? true
+                        : false
+                }
+              />
+              <div className="flex flex-row items-center gap-2 px-2">
+                <div className="flex flex-row items-center">
+                  {competition!.name === "Nations League"
+                    ? getCountryFlag(item.AwayTeam)
+                    : handleClubBadge(item.AwayTeam)}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* ACTION BUTTON (SEND GUESS / UPDATE RESULTS / SHOW POINTS-MESSAGE) */}
+        {listToShow === "guesses" ? (
+          <div className="mb-4 flex w-full flex-col items-center justify-center px-4">
+            {new Date(item.DateUtc) > new Date() ? (
+              !guessSent ? (
+                <button
+                  className="flex w-full items-center justify-center gap-2 rounded bg-red-600 px-2 py-1 outline-none"
+                  onClick={() => updateGuess(item)}
+                >
+                  <p className="text-xs font-semibold uppercase text-gray-100">
+                    Enviar Palpite ?
+                  </p>
+                </button>
+              ) : (
+                <div className="flex w-full items-center justify-center gap-2 rounded bg-green-600 px-2 py-1 outline-none">
+                  <p className="text-xs font-semibold uppercase text-gray-100">
+                    Palpite Enviado
+                  </p>
+                  <FaCheck className="text-gray-100" size={10} />
+                </div>
+              )
+            ) : getUserMatchPoints(item).messageIfGuessIsNull ===
+              "Palpite não enviado" ? (
+              <div className="flex w-full items-center justify-center gap-2 rounded bg-gray-400/70 px-2 py-1 outline-none">
+                <p className="text-xs font-semibold uppercase text-gray-100">
+                  Partida iniciada, não é possível palpitar
+                </p>
+              </div>
+            ) : (
+              <div className="flex w-full items-center justify-center gap-2 rounded bg-teal-600 px-2 py-1 outline-none">
+                <p className="text-center text-xs font-semibold uppercase text-gray-100">
+                  {getUserMatchPoints(item).messageIfGuessIsNull === ""
+                    ? getUserMatchPoints(item).points > 1
+                      ? `Pontuação: ${getUserMatchPoints(item).points} pontos`
+                      : getUserMatchPoints(item).points === 1
+                        ? `Pontuação: ${getUserMatchPoints(item).points} ponto`
+                        : `Pontuação: 0`
+                    : `Pontuação: 0`}
+                </p>
+              </div>
+            )}
+          </div>
+        ) : userData?.role === "admin" ? (
+          <div className="mb-4 flex w-full flex-col items-center justify-center px-4">
+            {!resultSent ? (
+              <button
+                className="flex w-full items-center justify-center gap-2 rounded bg-red-600 px-2 py-1 outline-none"
+                onClick={() => updateResult(item)}
+              >
+                <p className="text-xs font-semibold uppercase text-gray-100">
+                  Atualizar Resultado ?
+                </p>
+              </button>
+            ) : (
+              <div className="flex w-full items-center justify-center gap-2 rounded bg-green-600 px-2 py-1 outline-none">
+                <p className="text-xs font-semibold uppercase text-gray-100">
+                  Resultado Atualizado
+                </p>
+                <FaCheck className="text-gray-100" size={10} />
+              </div>
+            )}
+          </div>
+        ) : null}
+      </div>
+    </div>
   );
-};
+}, areEqual);
+
+const createItemData = memoize(
+  (
+    items: FixturesProps[],
+    convex: ConvexReactClient,
+    competition: Doc<"leagues"> | null | undefined,
+    receivedInputGuesses: GuessesProps[],
+    isMyGuesses: boolean,
+    listToShow: "guesses" | "results" | "ranking",
+    userData:
+      | {
+          _id: Id<"users">;
+          _creationTime: number;
+          leagues: {
+            id: Id<"leagues"> | null;
+            guesses: {
+              AwayTeamScore: number | null;
+              HomeTeamScore: number | null;
+              MatchNumber: number;
+              RoundNumber: number;
+              points: number;
+            }[];
+            totalPoints: number;
+          }[];
+          name: string | null;
+          email: string | null;
+          phone: string | null;
+          photo: string | null;
+          role: string;
+        }
+      | null
+      | undefined
+  ) => ({
+    items,
+    convex,
+    competition,
+    receivedInputGuesses,
+    isMyGuesses,
+    listToShow,
+    userData,
+  })
+);
+
+interface FixtureListToShowProps {
+  height: string | number;
+  items: FixturesProps[];
+  width: string | number;
+  userData:
+    | {
+        _id: Id<"users">;
+        _creationTime: number;
+        leagues: {
+          id: Id<"leagues"> | null;
+          guesses: {
+            AwayTeamScore: number | null;
+            HomeTeamScore: number | null;
+            MatchNumber: number;
+            RoundNumber: number;
+            points: number;
+          }[];
+          totalPoints: number;
+        }[];
+        name: string | null;
+        email: string | null;
+        phone: string | null;
+        photo: string | null;
+        role: string;
+      }
+    | null
+    | undefined;
+}
+
+export function FixtureListToShow({
+  height,
+  items,
+  width,
+  userData,
+}: FixtureListToShowProps) {
+  // GET GLOBAL DATA
+  const { convex, competition, inputGuesses, isMyGuesses, listToShow } =
+    useContext(GlobalDataContext) as GlobalDataContextType;
+
+  const receivedInputGuesses = inputGuesses;
+
+  const itemData = createItemData(
+    items,
+    convex,
+    competition,
+    receivedInputGuesses,
+    isMyGuesses,
+    listToShow,
+    userData
+  );
+
+  return (
+    <List
+      className="flex w-full flex-col scroll-smooth no-scrollbar"
+      height={height}
+      itemCount={items.length}
+      itemData={itemData}
+      itemSize={170}
+      width={width}
+    >
+      {Row}
+    </List>
+  );
+}

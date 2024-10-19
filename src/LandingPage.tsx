@@ -12,10 +12,7 @@ import PoolPage from "./screens/PoolPage";
 import Dashboard from "./screens/Dashboard";
 import { CreateLeague } from "./screens/CreateLeague";
 import { DeleteLeague } from "./screens/DeleteLeague";
-import { /*Doc, */ Id } from "../convex/_generated/dataModel";
-// import { useQuery } from "convex/react";
-// import { api } from "../convex/_generated/api";
-// import { toast } from "sonner";
+import { Id } from "../convex/_generated/dataModel";
 import { Modal } from "@mui/material";
 import ModalInfo from "./components/ModalInfo";
 import { UpdatePoints } from "./screens/UpdatePoints";
@@ -50,14 +47,12 @@ export type PageProps = {
 function LandingPage() {
   // GET GLOBAL DATA
   const {
-    // convex,
     headerLeftBackIcon,
     headerRightInfoIcon,
     headerTitle,
     logged,
     openModal,
     page,
-    // user,
     userData,
     userPools,
     setPage,
@@ -66,44 +61,6 @@ function LandingPage() {
   useEffect(() => {
     setPage({ show: "home", prev: "home" });
   }, []);
-
-  // const [userData, setUserData] = useState<Doc<"users"> | null | undefined>();
-
-  // const dbUserData = useQuery(api.functions.findUser, {
-  //   id: user!.uid,
-  //   type: "idString",
-  // });
-
-  // LOGGED USER DATA LEAGUES/POOLS
-  // const [userPools, setUserPools] = useState<
-  //   Doc<"leagues">[] | undefined | null
-  // >();
-
-  // HANDLE USERPOOLS FUNCTION
-  // async function handleUserPools() {
-  //   if (userData) {
-  //     const userPoolsData = await convex.query(api.functions.getUserPools, {
-  //       leagues: userData.leagues,
-  //     });
-  //     if (userPoolsData) {
-  //       setUserPools(userPoolsData);
-  //     } else {
-  //       console.log();
-  //       toast.error(
-  //         "Não foi possível atualizar os dados, contate a administração. 🤯"
-  //       );
-  //     }
-  //   }
-  // }
-
-  // useEffect(() => {
-  //   handleUserPools();
-  // }, [userData?.leagues]);
-
-  // useEffect(() => {
-  //   handleUserPools();
-  //   setUserData(dbUserData);
-  // }, [dbUserData]);
 
   function renderPage(pageTo: SetPageProps) {
     if (pageTo.show === "home") {
@@ -138,7 +95,6 @@ function LandingPage() {
           showRightButton={headerRightInfoIcon}
         />
         {renderPage(page)}
-        {/* <Outlet /> */}
         {/* FOOTER */}
         <FooterContainer />
         {/* MODAL */}

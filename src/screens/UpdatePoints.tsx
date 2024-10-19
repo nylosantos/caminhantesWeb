@@ -160,9 +160,10 @@ export function UpdatePoints() {
                         dbLeagueData.games.findIndex(
                           (game) =>
                             game.MatchNumber === guess.MatchNumber &&
-                            new Date(game.DateUtc) < new Date() &&
-                            new Date(game.DateUtc) >
-                              new Date(dbLeagueData.lastUpdatedPointsTime)
+                            new Date(game.DateUtc) < new Date()
+                            // &&
+                            // new Date(game.DateUtc) >
+                            //   new Date(dbLeagueData.lastUpdatedPointsTime)
                         );
                       if (foundedCompetitionGameIndex !== -1) {
                         const officialHomeResult =

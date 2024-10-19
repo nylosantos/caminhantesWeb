@@ -31,7 +31,7 @@ export const Header = ({
   const EmptyBoxSpace = () => <div className="flex h-6 w-6" />;
 
   return (
-    <div className="fixed top-0 z-10 flex w-full flex-row items-end justify-center bg-gray-200 py-5">
+    <div className="fixed top-0 z-50 flex w-full flex-row items-end justify-center bg-gray-200 py-5">
       <div className="flex w-full max-w-md items-center justify-between px-6">
         {showLeftButton ? (
           <button onClick={() => setPage({ show: page.prev, prev: page.show })}>

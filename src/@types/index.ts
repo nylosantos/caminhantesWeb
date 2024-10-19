@@ -286,7 +286,14 @@ export type UpdateGuessesFunctionProps = {
   type: "home" | "away";
 };
 
+export type AllUserGuessesProps = {
+  guesses: GuessesProps[];
+  id: DbId<"leagues"> | null;
+  totalPoints: number;
+};
+
 export type GlobalDataContextType = {
+  allLeagues: Doc<"leagues">[] | null | undefined;
   allRounds: number[];
   auth: Auth;
   convex: ConvexReactClient;
@@ -300,7 +307,7 @@ export type GlobalDataContextType = {
   headerTitle: string;
   headerLeftBackIcon: boolean;
   headerRightInfoIcon: boolean;
-  inputGuesses: React.MutableRefObject<GuessesProps[]>;
+  inputGuesses: GuessesProps[];
   isMyGuesses: boolean;
   isSubmitting: boolean;
   listToShow: "guesses" | "results" | "ranking";
@@ -314,6 +321,7 @@ export type GlobalDataContextType = {
   showFooterMenu: boolean;
   teamsLogoPath: TeamsLogoPathProps[];
   user: User | null | undefined;
+  userAllGuesses: AllUserGuessesProps[] | undefined | null;
   userData: Doc<"users"> | undefined;
   userPools: Doc<"leagues">[] | undefined | null;
 
@@ -342,6 +350,7 @@ export type GlobalDataContextType = {
   setCompetition: (id: Doc<"leagues"> | null | undefined) => void;
   setDbUsersData: (value: Doc<"users">[] | null | undefined) => void;
   setFilledGuesses: (option: boolean) => void;
+  setInputGuesses: (guesses: GuessesProps[]) => void;
   setIsSubmitting: (option: boolean) => void;
   setLoading: (value: boolean) => void;
   setLogin: (value: boolean) => void;
