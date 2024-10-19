@@ -724,16 +724,34 @@ export default function PoolPage({ userData }: PageProps) {
                                   `Resultado inválido, verifique o jogo ${item.HomeTeam} vs ${item.AwayTeam}`
                                 );
                               } else {
-                                setisSubmitting(true);
-                                convex
-                                  .mutation(api.functions.updateOneFixture, {
-                                    leagueId: competition!._id,
-                                    fixture: resultToUpdate,
-                                  })
-                                  .then(() => {
-                                    setisSubmitting(false);
-                                    toast.success("Resultado atualizado! 👌");
-                                  });
+                                if (
+                                  Number(fixtureValues.data.HomeTeamScore) <
+                                    0 ||
+                                  Number(fixtureValues.data.AwayTeamScore) < 0
+                                ) {
+                                  if (
+                                    Number(fixtureValues.data.HomeTeamScore) < 0
+                                  ) {
+                                    return toast.error(
+                                      `Eu sei que você detesta o ${item.HomeTeam}, mas resultado negativo já é demais né? 😂 Verifique o jogo ${item.HomeTeam} vs ${item.AwayTeam}`
+                                    );
+                                  } else {
+                                    return toast.error(
+                                      `Eu sei que você detesta o ${item.AwayTeam}, mas resultado negativo já é demais né? 😂 Verifique o jogo ${item.HomeTeam} vs ${item.AwayTeam}`
+                                    );
+                                  }
+                                } else {
+                                  setisSubmitting(true);
+                                  convex
+                                    .mutation(api.functions.updateOneFixture, {
+                                      leagueId: competition!._id,
+                                      fixture: resultToUpdate,
+                                    })
+                                    .then(() => {
+                                      setisSubmitting(false);
+                                      toast.success("Resultado atualizado! 👌");
+                                    });
+                                }
                               }
                             } else {
                               return toast.warning(
