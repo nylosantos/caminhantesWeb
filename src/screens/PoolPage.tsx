@@ -648,18 +648,36 @@ export default function PoolPage({ userData }: PageProps) {
                                   `Palpite inválido, verifique o jogo ${item.HomeTeam} vs ${item.AwayTeam}`
                                 );
                               } else {
-                                setisSubmitting(true);
-                                convex
-                                  .mutation(api.functions.updateOneGuess, {
-                                    userId: userData!._id,
-                                    guess: guessToUpdate,
-                                  })
-                                  .then(() => {
-                                    setisSubmitting(false);
-                                    toast.success(
-                                      "Palpite enviado! Agora é torcer! 👌"
+                                if (
+                                  Number(fixtureValues.data.HomeTeamScore) <
+                                    0 ||
+                                  Number(fixtureValues.data.AwayTeamScore) < 0
+                                ) {
+                                  if (
+                                    Number(fixtureValues.data.HomeTeamScore) < 0
+                                  ) {
+                                    return toast.error(
+                                      `Eu sei que você detesta o ${item.HomeTeam}, mas palpite negativo já é demais né? 😂 Verifique o jogo ${item.HomeTeam} vs ${item.AwayTeam}`
                                     );
-                                  });
+                                  } else {
+                                    return toast.error(
+                                      `Eu sei que você detesta o ${item.AwayTeam}, mas palpite negativo já é demais né? 😂 Verifique o jogo ${item.HomeTeam} vs ${item.AwayTeam}`
+                                    );
+                                  }
+                                } else {
+                                  setisSubmitting(true);
+                                  convex
+                                    .mutation(api.functions.updateOneGuess, {
+                                      userId: userData!._id,
+                                      guess: guessToUpdate,
+                                    })
+                                    .then(() => {
+                                      setisSubmitting(false);
+                                      toast.success(
+                                        "Palpite enviado! Agora é torcer! 👌"
+                                      );
+                                    });
+                                }
                               }
                             } else {
                               return toast.warning(
@@ -874,6 +892,7 @@ export default function PoolPage({ userData }: PageProps) {
                                   ? "bg-yellow-700"
                                   : "bg-red-600"
                               } px-2 py-1 outline-none`}
+                              disabled={isSubmitting}
                             >
                               <p className="text-xs font-semibold uppercase text-gray-100">
                                 {isSubmitting &&
@@ -947,6 +966,7 @@ export default function PoolPage({ userData }: PageProps) {
                                   ? "bg-yellow-700"
                                   : "bg-red-600"
                               } px-2 py-1 outline-none`}
+                              disabled={isSubmitting}
                             >
                               <p className="text-xs font-semibold uppercase text-gray-100">
                                 {isSubmitting &&
