@@ -28,11 +28,15 @@ export function PoolMenu({ listToShow, toggleGuessesResultsRanking }: Props) {
     if (competition!.name === 'Nations League') {
       return 'bg-amber-900';
     }
+    if (competition!.name === "WSL") {
+      return "bg-[#1e1034]";
+    }
     if (
-      competition!.name !== 'premierLeague2425' &&
-      competition!.name !== 'ucl2425' &&
-      competition!.name !== 'faCup2425' &&
-      competition!.name !== 'carabaoCup2425'
+      competition!.name !== "Premier League" &&
+      competition!.name !== "Champions League" &&
+      competition!.name !== "FA Cup" &&
+      competition!.name !== "Carabao Cup" &&
+      competition!.name !== "WSL"
     ) {
       return 'bg-red-600';
     }
@@ -55,11 +59,15 @@ export function PoolMenu({ listToShow, toggleGuessesResultsRanking }: Props) {
     if (competition!.name === 'Nations League') {
       return 'bg-amber-900/30';
     }
+    if (competition!.name === "WSL") {
+      return "bg-[#1e10344D]";
+    }
     if (
-      competition!.name !== 'premierLeague2425' &&
-      competition!.name !== 'ucl2425' &&
-      competition!.name !== 'faCup2425' &&
-      competition!.name !== 'carabaoCup2425'
+      competition!.name !== "Premier League" &&
+      competition!.name !== "Champions League" &&
+      competition!.name !== "FA Cup" &&
+      competition!.name !== "Carabao Cup" &&
+      competition!.name !== "WSL"
     ) {
       return 'bg-red-300';
     }
@@ -82,11 +90,15 @@ export function PoolMenu({ listToShow, toggleGuessesResultsRanking }: Props) {
     if (competition!.name === 'Nations League') {
       return 'text-amber-900';
     }
+    if (competition!.name === "WSL") {
+      return "text-[#1e1034]";
+    }
     if (
-      competition!.name !== 'premierLeague2425' &&
-      competition!.name !== 'ucl2425' &&
-      competition!.name !== 'faCup2425' &&
-      competition!.name !== 'carabaoCup2425'
+      competition!.name !== "Premier League" &&
+      competition!.name !== "Champions League" &&
+      competition!.name !== "FA Cup" &&
+      competition!.name !== "Carabao Cup" &&
+      competition!.name !== "WSL"
     ) {
       return 'text-red-600';
     }

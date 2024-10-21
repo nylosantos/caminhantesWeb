@@ -52,11 +52,15 @@ export default function Home({ userData, userPools }: HomePageProps) {
     if (name === 'Nations League') {
       return 'border-amber-500';
     }
+    if (name === "WSL") {
+      return "border-[#1e1034]";
+    }
     if (
-      name !== 'premierLeague2425' &&
-      name !== 'ucl2425' &&
-      name !== 'faCup2425' &&
-      name !== 'carabaoCup2425'
+      name !== "Premier League" &&
+      name !== "Champions League" &&
+      name !== "FA Cup" &&
+      name !== "Carabao Cup" &&
+      name !== "WSL"
     ) {
       return 'border-gray-500 bg-gray-200/50';
     }

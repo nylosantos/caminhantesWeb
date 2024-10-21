@@ -213,11 +213,15 @@ export default function PoolPage({ userData }: PageProps) {
     if (name === "Nations League") {
       return "bg-amber-900";
     }
+    if (name === "WSL") {
+      return "bg-[#1e1034]";
+    }
     if (
-      name !== "premierLeague2425" &&
-      name !== "ucl2425" &&
-      name !== "faCup2425" &&
-      name !== "carabaoCup2425"
+      name !== "Premier League" &&
+      name !== "Champions League" &&
+      name !== "FA Cup" &&
+      name !== "Carabao Cup" &&
+      name !== "WSL"
     ) {
       return "bg-red-600";
     }
@@ -249,11 +253,15 @@ export default function PoolPage({ userData }: PageProps) {
     if (name === "Nations League") {
       return "border-amber-500";
     }
+    if (name === "WSL") {
+      return "border-[#1e1034]";
+    }
     if (
-      name !== "premierLeague2425" &&
-      name !== "ucl2425" &&
-      name !== "faCup2425" &&
-      name !== "carabaoCup2425"
+      name !== "Premier League" &&
+      name !== "Champions League" &&
+      name !== "FA Cup" &&
+      name !== "Carabao Cup" &&
+      name !== "WSL"
     ) {
       return "border-red-600";
     }
@@ -267,6 +275,8 @@ export default function PoolPage({ userData }: PageProps) {
       return chooseTextCompetitionColor(competition!.name);
     }
   };
+
+  console.log(competition?.name)
 
   // CUSTOMIZING TEXT COLOR ACCORDING TO THE COMPETITION
   const chooseTextCompetitionColor = (name: string) => {
@@ -285,11 +295,15 @@ export default function PoolPage({ userData }: PageProps) {
     if (name === "Nations League") {
       return "text-amber-900";
     }
+    if (name === "WSL") {
+      return "text-[#1e1034]";
+    }
     if (
-      name !== "premierLeague2425" &&
-      name !== "ucl2425" &&
-      name !== "faCup2425" &&
-      name !== "carabaoCup2425"
+      name !== "Premier League" &&
+      name !== "Champions League" &&
+      name !== "FA Cup" &&
+      name !== "Carabao Cup" &&
+      name !== "WSL"
     ) {
       return "text-gray-950";
     }
@@ -314,11 +328,15 @@ export default function PoolPage({ userData }: PageProps) {
     if (name === "Nations League") {
       return "#78350f";
     }
+    if (name === "WSL") {
+      return "#1e1034";
+    }
     if (
-      name !== "premierLeague2425" &&
-      name !== "ucl2425" &&
-      name !== "faCup2425" &&
-      name !== "carabaoCup2425"
+      name !== "Premier League" &&
+      name !== "Champions League" &&
+      name !== "FA Cup" &&
+      name !== "Carabao Cup" &&
+      name !== "WSL"
     ) {
       return "#dc2626";
     }
@@ -464,6 +482,46 @@ export default function PoolPage({ userData }: PageProps) {
         }
       }
     }
+  }
+
+  // CLASSNAME INPUT FUNCTION COMPLEMENT
+  function complementClassNameFunction(item: FixturesProps) {
+    if (isMyGuesses) {
+      // GUESS SCREEN
+      if (
+        getUserMatchPoints(item).messageIfGuessIsNull === "Palpite não enviado"
+      ) {
+        // IF GUESS WASN'T SEND
+        if (new Date(item.DateUtc) < new Date()) {
+          // IF GAME WAS STARTED
+          return "bg-transparent hidden";
+        } else {
+          // IF GAME WASN'T START YET
+          return "bg-gray-300 w-10";
+        }
+      } else {
+        // IF GUESS WAS SEND
+        return "bg-gray-300 w-10";
+      }
+    } else {
+      // RESULTS SCREEN
+      if (
+        handleScoreGuess({
+          matchNumber: item.MatchNumber,
+          teamLocation: "home",
+        })
+      ) {
+        return "w-5 bg-transparent font-semibold"; // RESULT UPDATED
+      } else {
+        return "bg-gray-300 w-10"; // RESULT TO UPDATE
+      }
+    }
+  }
+
+  // CLASSNAME INPUT FUNCTION
+  function handleClassnameInput(item: FixturesProps) {
+    const classNameInput = `h-10 rounded text-center ${textColor} outline-none ${complementClassNameFunction(item)}`;
+    return classNameInput;
   }
 
   return (
@@ -838,19 +896,12 @@ export default function PoolPage({ userData }: PageProps) {
                             ? true
                             : false
                         }
-                        className={`${
-                          isMyGuesses
-                            ? getUserMatchPoints(item).messageIfGuessIsNull ===
-                              "Palpite não enviado"
-                              ? new Date(item.DateUtc) < new Date()
-                                ? "bg-transparent" // IF GAME WAS STARTED
-                                : "bg-gray-300" // IF GAME WASN'T START YET
-                              : "bg-gray-300" // IF GUESS WAS SEND
-                            : "bg-gray-300" // IF IS ON A RESULTS SCREEN
-                        } h-10 w-10 rounded text-center text-gray-950 outline-none`}
+                        className={handleClassnameInput(item)}
                       />
                       {/* TEAM SEPARATOR: '-' or 'vs' */}
-                      <p className="px-1 text-center text-gray-500">
+                      <p
+                        className={`px-1 text-center ${textColor} ${!isMyGuesses && "font-semibold"}`}
+                      >
                         {
                           isMyGuesses
                             ? getUserMatchPoints(item).messageIfGuessIsNull ===
@@ -880,16 +931,7 @@ export default function PoolPage({ userData }: PageProps) {
                             ? true
                             : false
                         }
-                        className={`${
-                          isMyGuesses
-                            ? getUserMatchPoints(item).messageIfGuessIsNull ===
-                              "Palpite não enviado"
-                              ? new Date(item.DateUtc) < new Date()
-                                ? "bg-transparent" // IF GAME WAS STARTED
-                                : "bg-gray-300" // IF GAME WASN'T START YET
-                              : "bg-gray-300" // IF GUESS WAS SEND
-                            : "bg-gray-300" // IF IS ON A RESULTS SCREEN
-                        } h-10 w-10 rounded text-center text-gray-950 outline-none`}
+                        className={handleClassnameInput(item)}
                       />
                       {/* AWAY TEAM BADGE */}
                       <div className="flex flex-row items-center ml-2">
