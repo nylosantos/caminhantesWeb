@@ -54,23 +54,7 @@ export const GlobalDataProvider = ({ children }: PostsContextProviderProps) => {
   // PAGE STATE
   const [page, setPage] = useState<SetPageProps>({
     prev: "home",
-    // "home" ||
-    //   "settings" ||
-    //   "poolPage" ||
-    //   "searchPool" ||
-    //   "dashboard" ||
-    //   "createLeague" ||
-    //   "deleteLeague" ||
-    //   "updateLeaguePoints",
     show: "home",
-    // "home" ||
-    // "settings" ||
-    // "poolPage" ||
-    // "searchPool" ||
-    // "dashboard" ||
-    // "createLeague" ||
-    // "deleteLeague" ||
-    // "updateLeaguePoints",
   });
 
   // LOGGED USER DATA STATE
@@ -813,10 +797,6 @@ export const GlobalDataProvider = ({ children }: PostsContextProviderProps) => {
   const userAllGuesses = useQuery(api.functions.getUserGuesses, {
     userId: user ? user.uid : "6vumNTS0lLgjmmPRfYu5LtofaPs2",
   });
-
-  useEffect(() => {
-    console.log(userAllGuesses);
-  }, [userAllGuesses]);
 
   // UPDATE ALL USER POINTS FUNCTION
   async function updatePoints() {

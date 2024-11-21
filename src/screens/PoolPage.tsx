@@ -21,6 +21,8 @@ import { toast } from "sonner";
 import withReactContent from "sweetalert2-react-content";
 import Swal from "sweetalert2";
 import { z } from "zod";
+import TeamResultsModal from "../components/TeamResultsModal";
+import AnotherUserPoolPage from "./AnotherUserPoolPage";
 // import memoize from "memoize-one";
 // import { FixedSizeList as List, areEqual } from "react-window";
 // import { FixtureListToShow } from "../components/FixtureListToShow";
@@ -42,11 +44,13 @@ export default function PoolPage({ userData }: PageProps) {
     isMyGuesses,
     listToShow,
     loading,
+    roundSelected,
     userAllGuesses,
     handleClubBadge,
     onFooterCustomize,
     onHeaderCustomize,
     setLoading,
+    setRoundSelected,
     toggleGuessesResultsRanking,
   } = useContext(GlobalDataContext) as GlobalDataContextType;
 
@@ -275,8 +279,6 @@ export default function PoolPage({ userData }: PageProps) {
       return chooseTextCompetitionColor(competition!.name);
     }
   };
-
-  console.log(competition?.name)
 
   // CUSTOMIZING TEXT COLOR ACCORDING TO THE COMPETITION
   const chooseTextCompetitionColor = (name: string) => {
@@ -524,8 +526,49 @@ export default function PoolPage({ userData }: PageProps) {
     return classNameInput;
   }
 
+  // MODAL TABLE RESULTS STATES AND FUNCTIONS
+  const [openUserModal, setOpenUserModal] = useState(false);
+  const [userId, setUserId] = useState("");
+  const handleOpenUserModal = (id: string) => {
+    setUserId(id);
+    setOpenUserModal(true);
+  };
+  const handleCloseUserModal = () => {
+    setOpenUserModal(false);
+    setUserId("");
+  };
+
+  // MODAL TABLE RESULTS STATES AND FUNCTIONS
+  const [open, setOpen] = useState(false);
+  const [teamName, setTeamName] = useState("");
+  const handleOpen = () => setOpen(true);
+  const handleClose = () => {
+    setOpen(false);
+    setTeamName("");
+  };
+
+  function handleClickTeam(namePicked: string) {
+    setTeamName(namePicked);
+    handleOpen();
+  }
+
   return (
     <Container>
+      <AnotherUserPoolPage
+        openUserModal={openUserModal}
+        handleCloseUserModal={handleCloseUserModal}
+        userId={userId}
+      />
+      <TeamResultsModal
+        open={open}
+        teamName={teamName}
+        textColor={textColor}
+        chooseBorderBgCardColor={chooseBorderBgCardColor}
+        chooseLoadingColor={chooseLoadingColor}
+        chooseTextCardColor={chooseTextCardColor}
+        getCountryFlag={getCountryFlag}
+        handleClose={handleClose}
+      />
       <>
         <div className="z-40 fixed top-16 flex w-full max-w-md flex-col items-center justify-center bg-white px-6">
           {/* SUBHEADER */}
@@ -553,7 +596,12 @@ export default function PoolPage({ userData }: PageProps) {
               listToShow={listToShow}
               toggleGuessesResultsRanking={toggleGuessesResultsRanking}
             />
-            <SelectFixtures listToShow={listToShow} rounds={allRounds} />
+            <SelectFixtures
+              listToShow={listToShow}
+              rounds={allRounds}
+              roundSelected={roundSelected}
+              setRoundSelected={setRoundSelected}
+            />
           </div>
         </div>
         {/* FIXTURES / RANKING LIST */}
@@ -580,8 +628,11 @@ export default function PoolPage({ userData }: PageProps) {
                   .sort((a, b) => b.totalPoints - a.totalPoints)
                   .map((participant, index) => (
                     <div
-                      className={`mb-3 flex w-full flex-row items-center justify-between rounded-md border-b-2 ${chooseBorderCardColor(competition!.name)} bg-gray-200/50 p-4`}
+                      className={`mb-3 cursor-pointer flex w-full flex-row items-center justify-between rounded-md border-b-2 ${chooseBorderCardColor(competition!.name)} bg-gray-200/50 p-4`}
                       key={uuidV4()}
+                      onClick={() =>
+                        handleOpenUserModal(participant.participant._id)
+                      }
                     >
                       <div className="flex flex-row items-center gap-3">
                         <img
@@ -626,8 +677,9 @@ export default function PoolPage({ userData }: PageProps) {
         fixturesToShow.length === 0 ? (
           <div className="mt-52 flex w-full flex-1 items-center justify-center px-4">
             <p className={`${textColor} text-center`}>
-              Nenhum resultado disponível, selecione outra rodada ou aguarde
-              atualizações de jogos disponíveis
+              Nenhum {isMyGuesses ? "palpite" : "resultado"} disponível,
+              selecione outra rodada ou aguarde atualizações de jogos
+              disponíveis
             </p>
           </div>
         ) : (
@@ -834,7 +886,19 @@ export default function PoolPage({ userData }: PageProps) {
                           item.AwayTeam
                         )}`}
                       >
-                        {item.HomeTeam} vs {item.AwayTeam}
+                        <span
+                          className="cursor-pointer"
+                          onClick={() => handleClickTeam(item.HomeTeam)}
+                        >
+                          {item.HomeTeam}
+                        </span>{" "}
+                        vs{" "}
+                        <span
+                          className="cursor-pointer"
+                          onClick={() => handleClickTeam(item.AwayTeam)}
+                        >
+                          {item.AwayTeam}
+                        </span>
                       </p>
                       <p
                         className={`w-full text-center text-xs ${chooseTextCardColor(
@@ -852,7 +916,10 @@ export default function PoolPage({ userData }: PageProps) {
                     </div>
                     <div className="flex flex-row items-center justify-end mb-4">
                       {/* HOME TEAM BADGE */}
-                      <div className="flex flex-row items-center mr-2">
+                      <div
+                        className="flex flex-row items-center mr-2 cursor-pointer"
+                        onClick={() => handleClickTeam(item.HomeTeam)}
+                      >
                         {competition!.name === "Nations League"
                           ? getCountryFlag(item.HomeTeam)
                           : handleClubBadge(item.HomeTeam)}
@@ -934,7 +1001,10 @@ export default function PoolPage({ userData }: PageProps) {
                         className={handleClassnameInput(item)}
                       />
                       {/* AWAY TEAM BADGE */}
-                      <div className="flex flex-row items-center ml-2">
+                      <div
+                        className="flex flex-row items-center ml-2 cursor-pointer"
+                        onClick={() => handleClickTeam(item.AwayTeam)}
+                      >
                         {competition!.name === "Nations League"
                           ? getCountryFlag(item.AwayTeam)
                           : handleClubBadge(item.AwayTeam)}

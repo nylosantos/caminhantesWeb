@@ -21,11 +21,18 @@ type DataProps = {
 type SelectComponentProps = {
   listToShow: "guesses" | "results" | "ranking";
   rounds: number[];
+  roundSelected: number | undefined;
+  setRoundSelected: (round: number | undefined) => void;
 };
 
-export function SelectFixtures({ listToShow, rounds }: SelectComponentProps) {
+export function SelectFixtures({
+  listToShow,
+  rounds,
+  roundSelected,
+  setRoundSelected,
+}: SelectComponentProps) {
   // GET GLOBAL DATA
-  const { competition, roundSelected, setRoundSelected } = useContext(
+  const { competition } = useContext(
     GlobalDataContext
   ) as GlobalDataContextType;
   const [open, setOpen] = useState(false);
