@@ -159,7 +159,7 @@ export default function TeamResultsModal({
                         teamName
                       )} w-full text-left text-xs font-normal leading-relaxed`}
                     >
-                      Tabela / Resultados
+                      Jogos / Resultados
                     </p>
                     <p
                       className={`${chooseTextCardColor(
