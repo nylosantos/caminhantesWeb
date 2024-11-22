@@ -23,6 +23,7 @@ import Swal from "sweetalert2";
 import { z } from "zod";
 import TeamResultsModal from "../components/TeamResultsModal";
 import AnotherUserPoolPage from "./AnotherUserPoolPage";
+import Standings from "../components/Standings";
 // import memoize from "memoize-one";
 // import { FixedSizeList as List, areEqual } from "react-window";
 // import { FixtureListToShow } from "../components/FixtureListToShow";
@@ -552,6 +553,25 @@ export default function PoolPage({ userData }: PageProps) {
     handleOpen();
   }
 
+  // MODAL TABLE STANDINGS STATES AND FUNCTIONS
+  const [openTable, setOpenTable] = useState(false);
+  const [competitionName, setCompetitionName] = useState("");
+  const handleOpenTable = () => setOpenTable(true);
+  const handleCloseTable = () => {
+    setOpenTable(false);
+    setCompetitionName("");
+  };
+
+  function handleClickCompetition(competitionNamePicked: string) {
+    if (
+      competition!.name === "Premier League" ||
+      competition!.name === "Champions League"
+    ) {
+      setCompetitionName(competitionNamePicked);
+      handleOpenTable();
+    }
+  }
+
   return (
     <Container>
       <AnotherUserPoolPage
@@ -569,11 +589,20 @@ export default function PoolPage({ userData }: PageProps) {
         getCountryFlag={getCountryFlag}
         handleClose={handleClose}
       />
+      <Standings
+        competitionName={competitionName}
+        handleCloseTableModal={handleCloseTable}
+        leagueId={competition!.name === 'Premier League' ? 47 : 42}
+        openTableModal={openTable}
+      />
       <>
         <div className="z-40 fixed top-16 flex w-full max-w-md flex-col items-center justify-center bg-white px-6">
           {/* SUBHEADER */}
           <div className="mt-6 flex w-full flex-row items-center justify-between">
-            <div className="flex flex-row items-center gap-3">
+            <div
+              className={`flex flex-row items-center gap-3 ${(competition!.name === "Premier League" || competition!.name === "Champions League") && "cursor-pointer"}`}
+              onClick={() => handleClickCompetition(competition!.name)}
+            >
               <img src={competition!.logoUrl} className="h-10" />
               <div className="flex flex-col items-center">
                 <p

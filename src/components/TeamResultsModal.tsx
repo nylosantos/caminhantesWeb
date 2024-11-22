@@ -191,7 +191,7 @@ export default function TeamResultsModal({
               </div>
               <Separator />
             </div>
-            <div className="flex flex-col w-full max-w-md bg-white p-10 pt-32 overflow-scroll">
+            <div className="flex flex-col w-full max-w-md bg-white p-6 pt-32 overflow-scroll no-scrollbar">
               {items
                 .sort((a, b) => a.RoundNumber - b.RoundNumber)
                 .map((item) => (

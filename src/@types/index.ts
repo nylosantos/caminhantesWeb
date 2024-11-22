@@ -332,6 +332,7 @@ export type GlobalDataContextType = {
   createLeague: (leagueInfo: CreateLeagueProps) => void;
   deleteLeague: (leagueId: DbId<"leagues">) => void;
   handleClubBadge: (clubName: string) => ReactNode;
+  handleFormatClubName: (clubName: string) => string;
   handleDbData: () => Promise<Doc<"users">[] | null | undefined>;
   handleLogout: () => void;
   handleUser: (

@@ -6302,7 +6302,7 @@ export default function SearchPool({ userData }: PageProps) {
       AwayTeamScore: null,
       points: 0,
     },
-  ]
+  ];
 
   const handleJoinPool = () => {
     async function callBackend() {
@@ -6352,7 +6352,7 @@ export default function SearchPool({ userData }: PageProps) {
                 totalPoints: 0,
                 guesses: wslGuesses,
               });
-            }else {
+            } else {
               userDataLeagues.push({
                 id: leagueInfo._id,
                 totalPoints: 0,
@@ -6385,6 +6385,141 @@ export default function SearchPool({ userData }: PageProps) {
     }
     void callBackend();
   };
+
+  const [triggerFunction] = useState(false);
+
+  // GET MATCHES BY LEAGUE ID
+  // async function handleMatchesByLeagues() {
+  //   const url =
+  //     "https://free-api-live-football-data.p.rapidapi.com/football-get-all-matches-by-league?leagueid=42";
+  //   const options = {
+  //     method: "GET",
+  //     headers: {
+  //       "x-rapidapi-key": "13eada8944msh179bcc5f6e6d88ap17aff9jsn82156ef129b3",
+  //       "x-rapidapi-host": "free-api-live-football-data.p.rapidapi.com",
+  //     },
+  //   };
+
+  //   try {
+  //     const response = await fetch(url, options);
+  //     const result = await response.json();
+  //     console.log(result);
+  //   } catch (error) {
+  //     console.error(error);
+  //   }
+  // }
+
+  // GET POPULAR LEAGUES DETAILS
+  // async function handlePopularLeagues() {
+  //   const url =
+  //     "https://free-api-live-football-data.p.rapidapi.com/football-popular-leagues";
+  //   const options = {
+  //     method: "GET",
+  //     headers: {
+  //       "x-rapidapi-key": "13eada8944msh179bcc5f6e6d88ap17aff9jsn82156ef129b3",
+  //       "x-rapidapi-host": "free-api-live-football-data.p.rapidapi.com",
+  //     },
+  //   };
+
+  //   try {
+  //     const response = await fetch(url, options);
+  //     const result = await response.json();
+  //     console.log(result);
+  //   } catch (error) {
+  //     console.error(error);
+  //   }
+  // }
+
+  // GET LEAGUE DETAILS BY ID
+  // async function handleLeagueDetailById() {
+  //   const url =
+  //     "https://free-api-live-football-data.p.rapidapi.com/football-get-league-detail?leagueid=47";
+  //   const options = {
+  //     method: "GET",
+  //     headers: {
+  //       "x-rapidapi-key": "13eada8944msh179bcc5f6e6d88ap17aff9jsn82156ef129b3",
+  //       "x-rapidapi-host": "free-api-live-football-data.p.rapidapi.com",
+  //     },
+  //   };
+
+  //   try {
+  //     const response = await fetch(url, options);
+  //     const result = await response.json();
+  //     console.log(result);
+  //   } catch (error) {
+  //     console.error(error);
+  //   }
+  // }
+
+  // GET ALL LEAGUES WITH COUNTRIES
+  // async function handleAllLeaguesWithCountries() {
+  //   const url =
+  //     "https://free-api-live-football-data.p.rapidapi.com/football-get-all-leagues-with-countries";
+  //   const options = {
+  //     method: "GET",
+  //     headers: {
+  //       "x-rapidapi-key": "13eada8944msh179bcc5f6e6d88ap17aff9jsn82156ef129b3",
+  //       "x-rapidapi-host": "free-api-live-football-data.p.rapidapi.com",
+  //     },
+  //   };
+
+  //   try {
+  //     const response = await fetch(url, options);
+  //     const result = await response.json();
+  //     console.log(result);
+  //   } catch (error) {
+  //     console.error(error);
+  //   }
+  // }
+
+  // GET ALL LEAGUES
+  // async function handleAllLeagues() {
+  //   const url =
+  //     "https://free-api-live-football-data.p.rapidapi.com/football-get-all-leagues";
+  //   const options = {
+  //     method: "GET",
+  //     headers: {
+  //       "x-rapidapi-key": "13eada8944msh179bcc5f6e6d88ap17aff9jsn82156ef129b3",
+  //       "x-rapidapi-host": "free-api-live-football-data.p.rapidapi.com",
+  //     },
+  //   };
+
+  //   try {
+  //     const response = await fetch(url, options);
+  //     const result = await response.json();
+  //     console.log(result);
+  //   } catch (error) {
+  //     console.error(error);
+  //   }
+  // }
+
+  // const [leagueStanding, setleagueStanding] = useState()
+
+  // GET STANDING BY LEAGUE ID
+  // async function handleStanding() {
+  //   const url =
+  //     "https://free-api-live-football-data.p.rapidapi.com/football-get-standing-all?leagueid=47";
+  //   const options = {
+  //     method: "GET",
+  //     headers: {
+  //       "x-rapidapi-key": "13eada8944msh179bcc5f6e6d88ap17aff9jsn82156ef129b3",
+  //       "x-rapidapi-host": "free-api-live-football-data.p.rapidapi.com",
+  //     },
+  //   };
+
+  //   try {
+  //     const response = await fetch(url, options);
+  //     const result = await response.json();
+  //     console.log(result);
+  //     setleagueStanding(result);
+  //   } catch (error) {
+  //     console.error(error);
+  //   }
+  // }
+
+  useEffect(() => {
+    // handleStanding();
+  }, [triggerFunction]);
 
   return (
     <Container>

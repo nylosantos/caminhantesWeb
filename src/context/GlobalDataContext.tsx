@@ -708,9 +708,47 @@ export const GlobalDataProvider = ({ children }: PostsContextProviderProps) => {
     }
   }
 
+  // FUNCTION TO CHECK CLUB NAME
+  function handleFormatClubName(clubName: string) {
+    if (clubName === "Manchester United" || clubName === "Man United") {
+      return "Man Utd";
+    } else if (clubName === "Manchester City") {
+      return "Man City";
+    } else if (clubName === "Nottm Forest") {
+      return "Nott'm Forest";
+    } else if (clubName === "Tottenham") {
+      return "Spurs";
+    } else if (clubName === "Borussia Dortmund" || clubName === "Dortmund") {
+      return "B. Dortmund";
+    } else if (clubName === "Dinamo Zagreb" || clubName === "D. Zagreb") {
+      return "GNK Dinamo";
+    } else if (clubName === "Atletico Madrid") {
+      return "Atleti";
+    } else if (clubName === "PSV Eindhoven") {
+      return "PSV";
+    } else if (clubName === "PSG") {
+      return "Paris";
+    } else if (clubName === "Sparta Prague") {
+      return "Sparta Praha";
+    } else if (clubName === "VfB Stuttgart") {
+      return "Stuttgart";
+    } else if (clubName === "Shakhtar Donetsk") {
+      return "Shakhtar";
+    } else if (clubName === "RB Leipzig" || clubName === "Red Bull Leipzig") {
+      return "Leipzig";
+    } else if (clubName === "Red Star Belgrade") {
+      return "Crvena Zvezda";
+    } else if (clubName === "Slovan Bratislava") {
+      return "S. Bratislava";
+    } else {
+      return clubName;
+    }
+  }
+
   // HANDLE CLUB BADGES FUNCTION
   function handleClubBadge(clubName: string) {
-    const teamName = teamsLogoPath.find(({ name }) => name === clubName);
+    const clubNameFormatted = handleFormatClubName(clubName);
+    const teamName = teamsLogoPath.find(({ name }) => name === clubNameFormatted);
     return <img src={teamName?.url} className="h-10 w-10 object-contain" />;
   }
 
@@ -936,6 +974,7 @@ export const GlobalDataProvider = ({ children }: PostsContextProviderProps) => {
         createLeague,
         deleteLeague,
         handleClubBadge,
+        handleFormatClubName,
         handleDbData,
         handleLogout,
         handleUser,
