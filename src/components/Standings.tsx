@@ -340,7 +340,7 @@ const Standings = ({
           <Separator />
         </div>
         <div
-          className={`flex flex-col w-full max-w-md h-full bg-white p-2 pt-28 overflow-scroll no-scrollbar ${textColor}`}
+          className={`flex flex-col w-full max-w-md h-full bg-white p-2 pt-28 pb-6 overflow-scroll no-scrollbar ${textColor}`}
         >
           <table className="table-auto w-full">
             <thead>
