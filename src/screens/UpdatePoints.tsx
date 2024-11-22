@@ -44,20 +44,6 @@ export function UpdatePoints() {
     Doc<"leagues"> | undefined
   >();
 
-  // GET LEAGUES FROM DB
-  // async function getDbLeagues() {
-  //   return await convex.query(api.dbRoot.getLeagues);
-  // }
-
-  // CALL FUNCTION ON RENDER
-  // useEffect(() => {
-  //   getDbLeagues().then((res) => {
-  //     if (res) {
-  //       setDbLeagues(res);
-  //     }
-  //   });
-  // }, []);
-
   function handleSelectData() {
     if (dbLeaguesData) {
       const array: DataProps[] = [];

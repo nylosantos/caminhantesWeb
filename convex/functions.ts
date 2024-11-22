@@ -421,6 +421,31 @@ export const updateOneFixture = mutation({
   },
 });
 
+export const updateLeagueFixtureResults = mutation({
+  args: {
+    leagueId: v.id("leagues"),
+    fixtures: v.array(
+      v.object({
+        AwayTeam: v.string(),
+        AwayTeamScore: v.union(v.null(), v.float64()),
+        DateUtc: v.string(),
+        Group: v.union(v.null(), v.string()),
+        HomeTeam: v.string(),
+        HomeTeamScore: v.union(v.null(), v.float64()),
+        Location: v.string(),
+        MatchNumber: v.float64(),
+        RoundNumber: v.float64(),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    const { fixtures, leagueId } = args;
+    await ctx.db.patch(leagueId, {
+      games: fixtures,
+    });
+  },
+});
+
 export const listLeagues = query({
   args: {},
   handler: async (ctx) => {

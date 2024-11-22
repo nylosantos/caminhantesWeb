@@ -119,7 +119,7 @@ export function SelectFixtures({
           onClick={() => {
             handleChangeRound("left");
           }}
-          className={`${chooseTextCompetitionColor(competition!.name)}`}
+          className={`${chooseTextCompetitionColor(competition!.name)} cursor-pointer`}
         />
 
         <div className="flex items-center justify-center">
@@ -165,7 +165,7 @@ export function SelectFixtures({
           onClick={() => {
             handleChangeRound("right");
           }}
-          className={`${chooseTextCompetitionColor(competition!.name)}`}
+          className={`${chooseTextCompetitionColor(competition!.name)} cursor-pointer`}
         />
       </div>
     );

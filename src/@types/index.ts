@@ -254,22 +254,22 @@ export type SetPageProps = {
     | "home"
     | "settings"
     | "poolPage"
-    | "anotherUserPoolPage"
     | "searchPool"
     | "dashboard"
     | "createLeague"
     | "deleteLeague"
-    | "updateLeaguePoints";
+    | "updateLeaguePoints"
+    | "updateLeagueResults";
   show:
     | "home"
     | "settings"
     | "poolPage"
-    | "anotherUserPoolPage"
     | "searchPool"
     | "dashboard"
     | "createLeague"
     | "deleteLeague"
-    | "updateLeaguePoints";
+    | "updateLeaguePoints"
+    | "updateLeagueResults";
 };
 
 // -------------------------- POOL PAGE TYPES --------------- //
@@ -420,3 +420,63 @@ export type UsersTableProps = {
 //   leagues: LeaguesTableProps[];
 //   users: UsersTableProps[];
 // };
+
+export interface MatchesProps {
+  status: string;
+  response: Response;
+}
+
+export interface Response {
+  matches: Match[];
+}
+
+export interface Match {
+  id: string;
+  pageUrl: string;
+  opponent: Opponent;
+  home: Home;
+  away: Away;
+  displayTournament: boolean;
+  notStarted: boolean;
+  tournament: Tournament;
+  status: Status;
+}
+
+export interface Opponent {
+  id: string;
+  name: string;
+  score: number;
+}
+
+export interface Home {
+  id: string;
+  name: string;
+  score: number;
+}
+
+export interface Away {
+  id: string;
+  name: string;
+  score: number;
+}
+
+export interface Tournament {
+  something: null;
+}
+
+export interface Status {
+  utcTime: string;
+  finished: boolean;
+  started: boolean;
+  cancelled: boolean;
+  awarded?: boolean;
+  scoreStr?: string;
+  reason?: Reason;
+}
+
+export interface Reason {
+  short: string;
+  shortKey: string;
+  long: string;
+  longKey: string;
+}

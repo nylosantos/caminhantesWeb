@@ -17,6 +17,7 @@ import { Modal } from "@mui/material";
 import ModalInfo from "./components/ModalInfo";
 import { UpdatePoints } from "./screens/UpdatePoints";
 import Notification from "./components/Notification";
+import { UpdateResults } from "./screens/UpdateResults";
 
 export type PageProps = {
   userData:
@@ -79,6 +80,8 @@ function LandingPage() {
       return <DeleteLeague />;
     } else if (pageTo.show === "updateLeaguePoints") {
       return <UpdatePoints />;
+    } else if (pageTo.show === "updateLeagueResults") {
+      return <UpdateResults />;
     }
   }
 

@@ -740,6 +740,24 @@ export const GlobalDataProvider = ({ children }: PostsContextProviderProps) => {
       return "Crvena Zvezda";
     } else if (clubName === "Slovan Bratislava") {
       return "S. Bratislava";
+    } else if (clubName === "Fletwood") {
+      return "Fleetwood Town";
+    } else if (clubName === "Stoke") {
+      return "Stoke City";
+    } else if (clubName === "Sheff Wed") {
+      return "Sheffield Wednesday";
+    } else if (clubName === "Preston") {
+      return "Preston North End";
+    } else if (clubName === "QPR") {
+      return "Queens Park Rangers";
+    } else if (clubName === "Coventry") {
+      return "Coventry City";
+    } else if (clubName === "Wycombe") {
+      return "Wycombe Wanderers";
+    } else if (clubName === "Bolton") {
+      return "Bolton Wanderers";
+    } else if (clubName === "Wimbledon") {
+      return "AFC Wimbledon";
     } else {
       return clubName;
     }

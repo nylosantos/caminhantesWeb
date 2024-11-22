@@ -22,7 +22,7 @@ import withReactContent from "sweetalert2-react-content";
 import Swal from "sweetalert2";
 import { z } from "zod";
 import TeamResultsModal from "../components/TeamResultsModal";
-import AnotherUserPoolPage from "./AnotherUserPoolPage";
+import AnotherUserGuessesModal from "../components/AnotherUserGuessesModal";
 import Standings from "../components/Standings";
 // import memoize from "memoize-one";
 // import { FixedSizeList as List, areEqual } from "react-window";
@@ -37,38 +37,82 @@ export default function PoolPage({ userData }: PageProps) {
   // GET GLOBAL DATA
   const {
     allLeagues,
-    allRounds,
+    // allRounds,
     convex,
     competition,
     dbUsersData,
-    fixturesToShow,
+    // fixturesToShow,
     isMyGuesses,
     listToShow,
     loading,
-    roundSelected,
-    userAllGuesses,
+    // roundSelected,
+    // userAllGuesses,
     handleClubBadge,
     onFooterCustomize,
     onHeaderCustomize,
     setLoading,
-    setRoundSelected,
+    // setRoundSelected,
     toggleGuessesResultsRanking,
   } = useContext(GlobalDataContext) as GlobalDataContextType;
 
-  const [participantsData, setParticipantsData] =
-    useState<ParticipantsWithPoints[]>();
+  const [userGuessesData, setUserGuessesData] = useState<GuessesProps[]>([]);
 
-  const [isSubmitting, setisSubmitting] = useState(false);
-
-  // CUSTOMIZE HEADER AND FOOTER
+  // SET USER GUESSES DATA WHEN USERDATA AND/OR COMPETITION IS CHANGED
   useEffect(() => {
-    onHeaderCustomize(`Meus Bolões`, true, true);
-    onFooterCustomize(false, true);
-  }, []);
+    if (userData && competition) {
+      const foundedUserLeagueGuesses = userData.leagues.find(
+        (league) => league.id === competition._id
+      );
+      if (foundedUserLeagueGuesses) {
+        setUserGuessesData(foundedUserLeagueGuesses.guesses);
+      }
+    }
+  }, [userData, competition]);
 
-  const fixtureBeingUpdated = useRef(0);
+  const [fixturesToShow, setFixturesToShow] = useState<FixturesProps[]>([]);
+  const [roundSelected, setRoundSelected] = useState<number | undefined>();
+  const [allRounds, setAllRounds] = useState<number[]>([]);
 
-  const ConfirmationAlert = withReactContent(Swal);
+  // SETTING ALL ROUNDS OF COMPETITION
+  useEffect(() => {
+    if (userData && userData.leagues !== null && competition) {
+      const selectedFixtures = competition.games;
+      if (selectedFixtures !== null) {
+        const roundsArray: number[] = [];
+        setLoading(true);
+        for (let index = 0; index < selectedFixtures.length; index++) {
+          const roundExist = roundsArray.findIndex(
+            (round) => round === selectedFixtures[index].RoundNumber
+          );
+          if (roundExist < 0) {
+            roundsArray.push(selectedFixtures[index].RoundNumber);
+          }
+        }
+        const initialRoundSelected = selectedFixtures.find(
+          (fixture) => new Date(fixture.DateUtc) > new Date()
+        );
+        if (initialRoundSelected) {
+          setRoundSelected(initialRoundSelected.RoundNumber);
+        } else {
+          setRoundSelected(roundsArray.length - 1);
+        }
+        setAllRounds(roundsArray);
+        setLoading(false);
+      }
+    }
+  }, [userData, competition]);
+
+  // SET FIXTURES TO SHOW WHEN ROUNDSELECTED IS CHANGED
+  useEffect(() => {
+    if (roundSelected) {
+      const foundedFixtures = competition?.games.filter(
+        (game) => game.RoundNumber === roundSelected
+      );
+      if (foundedFixtures) {
+        setFixturesToShow(foundedFixtures);
+      }
+    }
+  }, [roundSelected]);
 
   // GET LEAGUE PARTICIPANTS FUNCTION (FOR SHOW THE POINTS)
   async function getLeagueAndParticipantsData() {
@@ -81,10 +125,6 @@ export default function PoolPage({ userData }: PageProps) {
             const participant = dbUsersData.find(
               (dbUserData) => dbUserData._id === participantId
             );
-            // const participant = await convex.query(api.functions.findUser, {
-            //   id: participantId,
-            //   type: "_idDb",
-            // });
             if (participant) {
               const userLeagueGuesses = participant.leagues.find(
                 (userLeague) => userLeague.id === competition._id
@@ -104,16 +144,32 @@ export default function PoolPage({ userData }: PageProps) {
     }
   }
 
-  useEffect(() => {
-    toggleGuessesResultsRanking("guesses");
-  }, []);
-
+  // SET LOADING TO WAIT COMPETITION AND USERDATA
   useEffect(() => {
     if (competition && userData) {
       getLeagueAndParticipantsData();
       setLoading(false);
     } else setLoading(true);
   }, [competition, userData]);
+
+  const [participantsData, setParticipantsData] =
+    useState<ParticipantsWithPoints[]>();
+
+  const [isSubmitting, setisSubmitting] = useState(false);
+
+  // CUSTOMIZE HEADER AND FOOTER
+  useEffect(() => {
+    onHeaderCustomize(`Meus Bolões`, true, true);
+    onFooterCustomize(false, true);
+  }, []);
+
+  const fixtureBeingUpdated = useRef(0);
+
+  const ConfirmationAlert = withReactContent(Swal);
+
+  useEffect(() => {
+    toggleGuessesResultsRanking("guesses");
+  }, []);
 
   function getUserMatchPoints(item: FixturesProps) {
     if (userData && competition) {
@@ -361,25 +417,17 @@ export default function PoolPage({ userData }: PageProps) {
 
   // CHECK IF GUESS WAS SENDED
   function handleGuessSended(item: FixturesProps) {
-    if (userAllGuesses && competition) {
-      const competitionUserFoundedGuesses = userAllGuesses.find(
-        (competitionAllGuesses) => competitionAllGuesses.id === competition._id
+    if (userGuessesData) {
+      const foundedMatchGuess = userGuessesData.find(
+        (matchGuess) => matchGuess.MatchNumber === item.MatchNumber
       );
 
-      if (competitionUserFoundedGuesses) {
-        const foundedMatchGuess = competitionUserFoundedGuesses.guesses.find(
-          (matchGuess) => matchGuess.MatchNumber === item.MatchNumber
-        );
-
-        if (foundedMatchGuess) {
-          if (
-            foundedMatchGuess.HomeTeamScore !== null ||
-            foundedMatchGuess.AwayTeamScore !== null
-          ) {
-            return false;
-          } else {
-            return true;
-          }
+      if (foundedMatchGuess) {
+        if (
+          foundedMatchGuess.HomeTeamScore !== null ||
+          foundedMatchGuess.AwayTeamScore !== null
+        ) {
+          return false;
         } else {
           return true;
         }
@@ -392,36 +440,36 @@ export default function PoolPage({ userData }: PageProps) {
   }
 
   // CHECK IF RESULTS WAS SENDED
-  function handleResultsSended(item: FixturesProps) {
-    if (allLeagues && competition) {
-      const competitionFoundedResults = allLeagues.find(
-        (competitionAllResults) => competitionAllResults._id === competition._id
-      );
-      if (competitionFoundedResults) {
-        const foundedMatchResults = competitionFoundedResults.games.find(
-          (matchResults) => matchResults.MatchNumber === item.MatchNumber
-        );
+  // function handleResultsSended(item: FixturesProps) {
+  //   if (allLeagues && competition) {
+  //     const competitionFoundedResults = allLeagues.find(
+  //       (competitionAllResults) => competitionAllResults._id === competition._id
+  //     );
+  //     if (competitionFoundedResults) {
+  //       const foundedMatchResults = competitionFoundedResults.games.find(
+  //         (matchResults) => matchResults.MatchNumber === item.MatchNumber
+  //       );
 
-        if (foundedMatchResults) {
-          console.log(foundedMatchResults);
-          if (
-            foundedMatchResults.HomeTeamScore !== null ||
-            foundedMatchResults.AwayTeamScore !== null
-          ) {
-            return false;
-          } else {
-            return true;
-          }
-        } else {
-          return true;
-        }
-      } else {
-        return true;
-      }
-    } else {
-      return true;
-    }
-  }
+  //       if (foundedMatchResults) {
+  //         console.log(foundedMatchResults);
+  //         if (
+  //           foundedMatchResults.HomeTeamScore !== null ||
+  //           foundedMatchResults.AwayTeamScore !== null
+  //         ) {
+  //           return false;
+  //         } else {
+  //           return true;
+  //         }
+  //       } else {
+  //         return true;
+  //       }
+  //     } else {
+  //       return true;
+  //     }
+  //   } else {
+  //     return true;
+  //   }
+  // }
 
   interface ScoreGuessFunctionProps {
     matchNumber: number;
@@ -434,25 +482,16 @@ export default function PoolPage({ userData }: PageProps) {
     teamLocation,
   }: ScoreGuessFunctionProps) {
     if (listToShow === "guesses") {
-      if (userAllGuesses && competition) {
-        const competitionUserFoundedGuesses = userAllGuesses.find(
-          (competitionAllGuesses) =>
-            competitionAllGuesses.id === competition._id
+      if (userGuessesData) {
+        const foundedMatchGuess = userGuessesData.find(
+          (matchGuess) => matchGuess.MatchNumber === matchNumber
         );
 
-        if (competitionUserFoundedGuesses) {
-          const foundedMatchGuess = competitionUserFoundedGuesses.guesses.find(
-            (matchGuess) => matchGuess.MatchNumber === matchNumber
-          );
-
-          if (foundedMatchGuess) {
-            if (teamLocation === "home") {
-              return foundedMatchGuess.HomeTeamScore?.toString();
-            } else {
-              return foundedMatchGuess.AwayTeamScore?.toString();
-            }
+        if (foundedMatchGuess) {
+          if (teamLocation === "home") {
+            return foundedMatchGuess.HomeTeamScore?.toString();
           } else {
-            return "9";
+            return foundedMatchGuess.AwayTeamScore?.toString();
           }
         } else {
           return "9";
@@ -508,6 +547,7 @@ export default function PoolPage({ userData }: PageProps) {
       }
     } else {
       // RESULTS SCREEN
+
       if (
         handleScoreGuess({
           matchNumber: item.MatchNumber,
@@ -516,7 +556,7 @@ export default function PoolPage({ userData }: PageProps) {
       ) {
         return "w-5 bg-transparent font-semibold"; // RESULT UPDATED
       } else {
-        return "bg-gray-300 w-10"; // RESULT TO UPDATE
+        return "bg-transparent hidden"; // RESULT TO UPDATE
       }
     }
   }
@@ -574,7 +614,7 @@ export default function PoolPage({ userData }: PageProps) {
 
   return (
     <Container>
-      <AnotherUserPoolPage
+      <AnotherUserGuessesModal
         openUserModal={openUserModal}
         handleCloseUserModal={handleCloseUserModal}
         userId={userId}
@@ -592,7 +632,7 @@ export default function PoolPage({ userData }: PageProps) {
       <Standings
         competitionName={competitionName}
         handleCloseTableModal={handleCloseTable}
-        leagueId={competition!.name === 'Premier League' ? 47 : 42}
+        leagueId={competition!.name === "Premier League" ? 47 : 42}
         openTableModal={openTable}
       />
       <>
@@ -998,16 +1038,23 @@ export default function PoolPage({ userData }: PageProps) {
                       <p
                         className={`px-1 text-center ${textColor} ${!isMyGuesses && "font-semibold"}`}
                       >
-                        {
-                          isMyGuesses
-                            ? getUserMatchPoints(item).messageIfGuessIsNull ===
-                              "Palpite não enviado"
-                              ? new Date(item.DateUtc) < new Date()
-                                ? "vs" // IF GAME WAS STARTED
-                                : "-" // IF GAME WASN'T START YET
-                              : "-" // IF GUESS WAS SEND
-                            : "-" // IF IS ON A RESULTS SCREEN
-                        }
+                        {isMyGuesses
+                          ? getUserMatchPoints(item).messageIfGuessIsNull ===
+                            "Palpite não enviado"
+                            ? new Date(item.DateUtc) < new Date()
+                              ? "vs" // IF GAME WAS STARTED
+                              : "-" // IF GAME WASN'T START YET
+                            : "-" // IF GUESS WAS SEND
+                          : handleScoreGuess({
+                                matchNumber: item.MatchNumber,
+                                teamLocation: "away",
+                              }) &&
+                              handleScoreGuess({
+                                matchNumber: item.MatchNumber,
+                                teamLocation: "home",
+                              })
+                            ? "-"
+                            : "vs"}
                       </p>
                       {/* AWAY TEAM SCORE INPUT */}
                       <input
@@ -1040,7 +1087,82 @@ export default function PoolPage({ userData }: PageProps) {
                       </div>
                     </div>
                     {/* ACTION BUTTON (SEND GUESS / UPDATE RESULTS / SHOW POINTS-MESSAGE) */}
-                    {listToShow === "guesses" ? (
+                    {listToShow === "guesses" && (
+                      <div className="mb-4 flex w-full flex-col items-center justify-center px-4">
+                        {new Date(item.DateUtc) > new Date() ? (
+                          handleGuessSended(item) ? (
+                            <button
+                              className={`flex w-full items-center justify-center gap-2 rounded ${
+                                isSubmitting &&
+                                fixtureBeingUpdated.current === item.MatchNumber
+                                  ? "bg-yellow-700"
+                                  : "bg-red-600"
+                              } px-2 py-1 outline-none`}
+                              disabled={isSubmitting}
+                            >
+                              <p className="text-xs font-semibold uppercase text-gray-100">
+                                {isSubmitting &&
+                                fixtureBeingUpdated.current === item.MatchNumber
+                                  ? "Enviando palpite..."
+                                  : "Enviar Palpite ?"}
+                              </p>
+                            </button>
+                          ) : (
+                            <div
+                              className={`flex w-full items-center justify-center gap-2 rounded ${
+                                isSubmitting &&
+                                fixtureBeingUpdated.current === item.MatchNumber
+                                  ? "bg-yellow-700"
+                                  : "bg-green-600"
+                              } px-2 py-1 outline-none`}
+                            >
+                              <p className="text-xs font-semibold uppercase text-gray-100">
+                                {isSubmitting &&
+                                fixtureBeingUpdated.current === item.MatchNumber
+                                  ? "Enviando palpite..."
+                                  : "Palpite Enviado"}
+                              </p>
+                              <FaCheck className="text-gray-100" size={10} />
+                            </div>
+                          )
+                        ) : getUserMatchPoints(item).messageIfGuessIsNull ===
+                          "Palpite não enviado" ? (
+                          <div
+                            className={`flex w-full items-center justify-center gap-2 rounded ${
+                              isSubmitting &&
+                              fixtureBeingUpdated.current === item.MatchNumber
+                                ? "bg-yellow-700"
+                                : "bg-gray-400/70"
+                            } px-2 py-1 outline-none`}
+                          >
+                            <p className="text-xs font-semibold uppercase text-gray-100">
+                              Partida iniciada, não é possível palpitar
+                            </p>
+                          </div>
+                        ) : (
+                          <div
+                            className={`flex w-full items-center justify-center gap-2 rounded ${
+                              isSubmitting &&
+                              fixtureBeingUpdated.current === item.MatchNumber
+                                ? "bg-yellow-700"
+                                : "bg-teal-600"
+                            } px-2 py-1 outline-none`}
+                          >
+                            <p className="text-center text-xs font-semibold uppercase text-gray-100">
+                              {getUserMatchPoints(item).messageIfGuessIsNull ===
+                              ""
+                                ? getUserMatchPoints(item).points > 1
+                                  ? `Pontuação: ${getUserMatchPoints(item).points} pontos`
+                                  : getUserMatchPoints(item).points === 1
+                                    ? `Pontuação: ${getUserMatchPoints(item).points} ponto`
+                                    : `Pontuação: 0`
+                                : `Pontuação: 0`}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {/* {listToShow === "guesses" ? (
                       <div className="mb-4 flex w-full flex-col items-center justify-center px-4">
                         {new Date(item.DateUtc) > new Date() ? (
                           handleGuessSended(item) ? (
@@ -1154,7 +1276,7 @@ export default function PoolPage({ userData }: PageProps) {
                           )}
                         </div>
                       )
-                    )}
+                    )} */}
                   </form>
                 </>
               ))}

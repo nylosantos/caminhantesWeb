@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import { Separator } from "../components/Separator";
+import { Separator } from "./Separator";
 import { /*memo, */ useContext, useEffect, useState } from "react";
 import { FixturesProps, GlobalDataContextType, GuessesProps } from "../@types";
 import { GlobalDataContext } from "../context/GlobalDataContext";
@@ -10,29 +10,26 @@ import { Doc } from "../../convex/_generated/dataModel";
 import { RingLoader } from "react-spinners";
 import { getCode } from "country-list";
 import Flag from "react-world-flags";
-import TeamResultsModal from "../components/TeamResultsModal";
+import TeamResultsModal from "./TeamResultsModal";
 import { Modal } from "@mui/material";
-import { SelectFixtures } from "../components/SelectFixtures";
-// import memoize from "memoize-one";
-// import { FixedSizeList as List, areEqual } from "react-window";
-// import { FixtureListToShow } from "../components/FixtureListToShow";
+import { SelectFixtures } from "./SelectFixtures";
 
 export interface ParticipantsWithPoints {
   participant: Doc<"users">;
   totalPoints: number;
 }
 
-interface AnotherUserPoolPageProps {
+interface AnotherUserGuessesModalProps {
   userId: string;
   openUserModal: boolean;
   handleCloseUserModal: () => void;
 }
 
-export default function AnotherUserPoolPage({
+export default function AnotherUserGuessesModal({
   openUserModal,
   userId,
   handleCloseUserModal,
-}: AnotherUserPoolPageProps) {
+}: AnotherUserGuessesModalProps) {
   // GET GLOBAL DATA
   const { competition, dbUsersData, loading, handleClubBadge, setLoading } =
     useContext(GlobalDataContext) as GlobalDataContextType;
@@ -73,6 +70,7 @@ export default function AnotherUserPoolPage({
     }
   }, [userData, competition]);
 
+  // SET USER DATA WHEN USERID AND/OR DATABASE IS CHANGED
   useEffect(() => {
     if (userId !== "" && dbUsersData) {
       const foundedUser = dbUsersData.find((user) => user._id === userId);
@@ -82,6 +80,7 @@ export default function AnotherUserPoolPage({
     }
   }, [dbUsersData, userId]);
 
+  // SET USER GUESSES DATA WHEN USERDATA AND/OR COMPETITION IS CHANGED
   useEffect(() => {
     if (userData && competition) {
       const foundedUserLeagueGuesses = userData.leagues.find(
@@ -93,12 +92,14 @@ export default function AnotherUserPoolPage({
     }
   }, [userData, competition]);
 
+  // SET LOADING TO WAIT COMPETITION AND USERDATA
   useEffect(() => {
     if (competition && userData) {
       setLoading(false);
     } else setLoading(true);
   }, [competition, userData]);
 
+  // SET FIXTURES TO SHOW WHEN ROUNDSELECTED IS CHANGED
   useEffect(() => {
     if (roundSelected) {
       const foundedFixtures = competition?.games.filter(
@@ -412,7 +413,7 @@ export default function AnotherUserPoolPage({
           handleClose={handleClose}
         />
         <div className="z-40 fixed top-0 flex w-full max-w-md flex-col items-center justify-center bg-white px-6">
-        {/* SUBHEADER */}
+          {/* SUBHEADER */}
           <div className="mt-6 flex w-full flex-row items-center justify-between">
             <div className="flex flex-row items-center gap-3">
               <img
@@ -481,7 +482,7 @@ export default function AnotherUserPoolPage({
               </p>
             </div>
           ) : (
-            <div className="mt-8 flex w-full h-full flex-col p-10 pt-32 overflow-scroll">
+            <div className="mt-8 flex w-full h-full flex-col p-6 pt-32 overflow-scroll">
               {fixturesToShow
                 .sort((a, b) => {
                   if (a.DateUtc === b.DateUtc) {

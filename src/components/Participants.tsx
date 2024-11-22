@@ -12,7 +12,7 @@ interface ParticipantsProps {
 
 export const Participants = ({ league }: ParticipantsProps) => {
   // GET GLOBAL DATA
-  const { /*convex, */ dbUsersData, userPools } = useContext(
+  const { dbUsersData, userPools } = useContext(
     GlobalDataContext
   ) as GlobalDataContextType;
   const [usersData, setUsersData] = useState<ParticipantsWithPoints[] | null>(
@@ -30,10 +30,6 @@ export const Participants = ({ league }: ParticipantsProps) => {
             const participant = dbUsersData.find(
               (dbUserData) => dbUserData._id === participantId
             );
-            // const participant = await convex.query(api.functions.findUser, {
-            //   id: participantId,
-            //   type: "_idDb",
-            // });
             if (participant) {
               const userLeagueGuesses = participant.leagues.find(
                 (userLeague) => userLeague.id === league._id
