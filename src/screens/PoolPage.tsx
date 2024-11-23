@@ -37,37 +37,19 @@ export default function PoolPage({ userData }: PageProps) {
   // GET GLOBAL DATA
   const {
     allLeagues,
-    // allRounds,
     convex,
     competition,
     dbUsersData,
-    // fixturesToShow,
     isMyGuesses,
     listToShow,
     loading,
-    // roundSelected,
-    // userAllGuesses,
+    userAllGuesses,
     handleClubBadge,
     onFooterCustomize,
     onHeaderCustomize,
     setLoading,
-    // setRoundSelected,
     toggleGuessesResultsRanking,
   } = useContext(GlobalDataContext) as GlobalDataContextType;
-
-  const [userGuessesData, setUserGuessesData] = useState<GuessesProps[]>([]);
-
-  // SET USER GUESSES DATA WHEN USERDATA AND/OR COMPETITION IS CHANGED
-  useEffect(() => {
-    if (userData && competition) {
-      const foundedUserLeagueGuesses = userData.leagues.find(
-        (league) => league.id === competition._id
-      );
-      if (foundedUserLeagueGuesses) {
-        setUserGuessesData(foundedUserLeagueGuesses.guesses);
-      }
-    }
-  }, [userData, competition]);
 
   const [fixturesToShow, setFixturesToShow] = useState<FixturesProps[]>([]);
   const [roundSelected, setRoundSelected] = useState<number | undefined>();
@@ -417,17 +399,25 @@ export default function PoolPage({ userData }: PageProps) {
 
   // CHECK IF GUESS WAS SENDED
   function handleGuessSended(item: FixturesProps) {
-    if (userGuessesData) {
-      const foundedMatchGuess = userGuessesData.find(
-        (matchGuess) => matchGuess.MatchNumber === item.MatchNumber
+    if (userAllGuesses && competition) {
+      const competitionUserFoundedGuesses = userAllGuesses.find(
+        (competitionAllGuesses) => competitionAllGuesses.id === competition._id
       );
 
-      if (foundedMatchGuess) {
-        if (
-          foundedMatchGuess.HomeTeamScore !== null ||
-          foundedMatchGuess.AwayTeamScore !== null
-        ) {
-          return false;
+      if (competitionUserFoundedGuesses) {
+        const foundedMatchGuess = competitionUserFoundedGuesses.guesses.find(
+          (matchGuess) => matchGuess.MatchNumber === item.MatchNumber
+        );
+
+        if (foundedMatchGuess) {
+          if (
+            foundedMatchGuess.HomeTeamScore !== null ||
+            foundedMatchGuess.AwayTeamScore !== null
+          ) {
+            return false;
+          } else {
+            return true;
+          }
         } else {
           return true;
         }
@@ -482,16 +472,25 @@ export default function PoolPage({ userData }: PageProps) {
     teamLocation,
   }: ScoreGuessFunctionProps) {
     if (listToShow === "guesses") {
-      if (userGuessesData) {
-        const foundedMatchGuess = userGuessesData.find(
-          (matchGuess) => matchGuess.MatchNumber === matchNumber
+      if (userAllGuesses && competition) {
+        const competitionUserFoundedGuesses = userAllGuesses.find(
+          (competitionAllGuesses) =>
+            competitionAllGuesses.id === competition._id
         );
 
-        if (foundedMatchGuess) {
-          if (teamLocation === "home") {
-            return foundedMatchGuess.HomeTeamScore?.toString();
+        if (competitionUserFoundedGuesses) {
+          const foundedMatchGuess = competitionUserFoundedGuesses.guesses.find(
+            (matchGuess) => matchGuess.MatchNumber === matchNumber
+          );
+
+          if (foundedMatchGuess) {
+            if (teamLocation === "home") {
+              return foundedMatchGuess.HomeTeamScore?.toString();
+            } else {
+              return foundedMatchGuess.AwayTeamScore?.toString();
+            }
           } else {
-            return foundedMatchGuess.AwayTeamScore?.toString();
+            return "9";
           }
         } else {
           return "9";

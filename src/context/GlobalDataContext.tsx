@@ -65,6 +65,8 @@ export const GlobalDataProvider = ({ children }: PostsContextProviderProps) => {
     Doc<"users">[] | null | undefined
   >();
 
+  const allLeagues = useQuery(api.functions.listLeagues);
+
   // DATABASE LEAGUES DATA STATE
   const [dbLeaguesData, setDbLeaguesData] = useState<
     Doc<"leagues">[] | null | undefined
@@ -766,7 +768,9 @@ export const GlobalDataProvider = ({ children }: PostsContextProviderProps) => {
   // HANDLE CLUB BADGES FUNCTION
   function handleClubBadge(clubName: string) {
     const clubNameFormatted = handleFormatClubName(clubName);
-    const teamName = teamsLogoPath.find(({ name }) => name === clubNameFormatted);
+    const teamName = teamsLogoPath.find(
+      ({ name }) => name === clubNameFormatted
+    );
     return <img src={teamName?.url} className="h-10 w-10 object-contain" />;
   }
 
@@ -847,8 +851,6 @@ export const GlobalDataProvider = ({ children }: PostsContextProviderProps) => {
       return "text-gray-700";
     }
   };
-
-  const allLeagues = useQuery(api.functions.listLeagues);
 
   const userAllGuesses = useQuery(api.functions.getUserGuesses, {
     userId: user ? user.uid : "6vumNTS0lLgjmmPRfYu5LtofaPs2",
