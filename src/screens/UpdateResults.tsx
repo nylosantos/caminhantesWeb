@@ -26,6 +26,7 @@ export function UpdateResults() {
     handleFormatClubName,
     onFooterCustomize,
     onHeaderCustomize,
+    updateOneLeagueAllUsersPoints,
     setIsSubmitting,
     setPage,
   } = useContext(GlobalDataContext) as GlobalDataContextType;
@@ -75,6 +76,8 @@ export function UpdateResults() {
         setLeagueId(42);
       } else if (leagueDetail.name === "Carabao Cup") {
         setLeagueId(133);
+      } else if (leagueDetail.name === "WSL") {
+        setLeagueId(9227);
       } else {
         setLeagueId(undefined);
       }
@@ -98,6 +101,7 @@ export function UpdateResults() {
           setIsSubmitting(true);
           try {
             await handleUpdateLeagueResults();
+            await updateOneLeagueAllUsersPoints(leagueDetails);
           } catch (error) {
             console.log(error);
           } finally {
@@ -166,12 +170,30 @@ export function UpdateResults() {
         }
       });
 
-      await convex.mutation(api.functions.updateLeagueFixtureResults, {
-        leagueId: leagueDetails!._id,
-        fixtures: newCompetitionGames,
-      });
+      await convex
+        .mutation(api.functions.updateLeagueFixtureResults, {
+          leagueId: leagueDetails!._id,
+          fixtures: newCompetitionGames,
+        })
+        .then(async () => {
+          const newLeagueCode = Math.random()
+            .toString(36)
+            .substring(2, 8)
+            .toUpperCase();
+          await convex
+            .mutation(api.functions.updateLeagueCode, {
+              leagueId: leagueDetails!._id,
+              code: newLeagueCode,
+            })
+            .then(() => {
+              toast.success(
+                "Resultados atualizados com sucesso e código da liga atualizado! 👌"
+              );
+            });
+        });
     } catch (error) {
-      console.error(error);
+      toast.error("Ocorreu um erro... 🤯");
+      console.log("ESSE É O ERRO", error);
     } finally {
       setIsSubmitting(false);
       setPage({ prev: "home", show: "dashboard" });
@@ -242,6 +264,15 @@ export function UpdateResults() {
         )}
 
         <Separator />
+
+        <p className="text-red-500 text-xxs/relaxed uppercase text-center font-bold">
+          Atenção: Sempre que os resultados da liga são atualizados, <br />o
+          código de acesso ao bolão também é atualizado!
+        </p>
+        <p className="text-red-500 text-xxs/relaxed uppercase text-center">
+          Na Dashboard da administração você encontra a página <br /> que dá
+          acesso aos códigos de acesso atualizados
+        </p>
 
         {/* UPDATE LEAGUE POINTS || UPDATE ALL LEAGUES POINTS BUTTON */}
         {leagueDetails && (

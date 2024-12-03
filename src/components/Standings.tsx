@@ -57,18 +57,34 @@ const Standings = ({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (error) {
+      console.error("aqui: ", error);
+    }
+  }, [error]);
+
+  useEffect(() => {
     const fetchLeagueTable = async () => {
+      // const url = `http://api.football-data.org/v4/competitions/PL/standings`;
       const url = `https://free-api-live-football-data.p.rapidapi.com/football-get-standing-all?leagueid=${leagueId}`;
+      // const options = {
+      //   method: "GET",
+      //   headers: {
+      //     "X-Auth-Token":
+      //       "8391598f4c63417c83a2e25a5bec828d",
+      //     // "x-rapidapi-host": "free-api-live-football-data.p.rapidapi.com",
+      //   },
+      // };
       const options = {
         method: "GET",
         headers: {
           "x-rapidapi-key":
-            "13eada8944msh179bcc5f6e6d88ap17aff9jsn82156ef129b3",
+            "2642c42e66mshbcfae40b955320cp14d0d9jsn0147a1020a93",
           "x-rapidapi-host": "free-api-live-football-data.p.rapidapi.com",
         },
       };
       try {
         const response = await fetch(url, options);
+        console.log("tentando: ", response);
         if (!response.ok) {
           throw new Error("Erro ao buscar dados da API");
         }

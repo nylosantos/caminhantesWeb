@@ -6386,28 +6386,28 @@ export default function SearchPool({ userData }: PageProps) {
     void callBackend();
   };
 
-  const [triggerFunction] = useState(false);
+  // const [triggerFunction] = useState(false);
 
   // GET MATCHES BY LEAGUE ID
-  async function handleMatchesByLeagues() {
-    const url =
-      "https://free-api-live-football-data.p.rapidapi.com/football-get-all-matches-by-league?leagueid=42";
-    const options = {
-      method: "GET",
-      headers: {
-        "x-rapidapi-key": "13eada8944msh179bcc5f6e6d88ap17aff9jsn82156ef129b3",
-        "x-rapidapi-host": "free-api-live-football-data.p.rapidapi.com",
-      },
-    };
+  // async function handleMatchesByLeagues() {
+  //   const url =
+  //     "https://free-api-live-football-data.p.rapidapi.com/football-get-all-matches-by-league?leagueid=42";
+  //   const options = {
+  //     method: "GET",
+  //     headers: {
+  //       "x-rapidapi-key": "13eada8944msh179bcc5f6e6d88ap17aff9jsn82156ef129b3",
+  //       "x-rapidapi-host": "free-api-live-football-data.p.rapidapi.com",
+  //     },
+  //   };
 
-    try {
-      const response = await fetch(url, options);
-      const result = await response.json();
-      console.log(result);
-    } catch (error) {
-      console.error(error);
-    }
-  }
+  //   try {
+  //     const response = await fetch(url, options);
+  //     const result = await response.json();
+  //     console.log(result);
+  //   } catch (error) {
+  //     console.error(error);
+  //   }
+  // }
 
   // GET POPULAR LEAGUES DETAILS
   // async function handlePopularLeagues() {
@@ -6517,9 +6517,9 @@ export default function SearchPool({ userData }: PageProps) {
   //   }
   // }
 
-  useEffect(() => {
-    handleMatchesByLeagues();
-  }, [triggerFunction]);
+  // useEffect(() => {
+  //   handleMatchesByLeagues();
+  // }, [triggerFunction]);
 
   return (
     <Container>

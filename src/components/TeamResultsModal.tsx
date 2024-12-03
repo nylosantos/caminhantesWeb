@@ -116,7 +116,7 @@ export default function TeamResultsModal({
         setItems([]);
         setLoading(true);
       }}
-      className="flex flex-col w-screen justify-center items-center"
+      className="flex flex-col w-screen justify-start items-center"
     >
       <>
         {loading ? (

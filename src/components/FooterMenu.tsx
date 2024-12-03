@@ -36,7 +36,7 @@ export function FooterMenu() {
           <IoSettings size={24} />
           <p className="text-xs">Configurações</p>
         </button>
-        {userData?.role === "admin" && (
+        {(userData?.role === "admin" || userData?.role === "editor") && (
           <button
             onClick={() =>
               page.show === "dashboard"

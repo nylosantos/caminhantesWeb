@@ -446,6 +446,19 @@ export const updateLeagueFixtureResults = mutation({
   },
 });
 
+export const updateLeagueCode = mutation({
+  args: {
+    leagueId: v.id("leagues"),
+    code: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { code, leagueId } = args;
+    await ctx.db.patch(leagueId, {
+      code: code,
+    });
+  },
+});
+
 export const listLeagues = query({
   args: {},
   handler: async (ctx) => {

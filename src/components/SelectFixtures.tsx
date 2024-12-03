@@ -110,17 +110,63 @@ export function SelectFixtures({
     }
   }
 
+  type HandleLeaguePhaseCustomProps = {
+    competition: string;
+    round: number | undefined;
+    showLabel: boolean;
+  };
+
+  const handleLeaguePhaseCustom = ({
+    competition,
+    round,
+    showLabel,
+  }: HandleLeaguePhaseCustomProps) => {
+    if (competition === "Carabao Cup" && round === 5) {
+      return "Quartas de Final";
+    } else if (competition === "Carabao Cup" && round === 6) {
+      return "Semifinal (ida)";
+    } else if (competition === "Carabao Cup" && round === 7) {
+      return "Semifinal (volta)";
+    } else if (competition === "Carabao Cup" && round === 8) {
+      return "Final";
+    } else if (competition === "Champions League" && round === 9) {
+      return "Playoffs (ida)";
+    } else if (competition === "Champions League" && round === 10) {
+      return "Playoffs (volta)";
+    } else if (competition === "Champions League" && round === 11) {
+      return "Oitavas de Final (ida)";
+    } else if (competition === "Champions League" && round === 12) {
+      return "Oitavas de Final (volta)";
+    } else if (competition === "Champions League" && round === 13) {
+      return "Quartas de Final (ida)";
+    } else if (competition === "Champions League" && round === 14) {
+      return "Quartas de Final (volta)";
+    } else if (competition === "Champions League" && round === 15) {
+      return "Semifinal (ida)";
+    } else if (competition === "Champions League" && round === 16) {
+      return "Semifinal (volta)";
+    } else if (competition === "Champions League" && round === 17) {
+      return "Final";
+    } else {
+      return `${showLabel ? "Rodada " : ""}${round}`;
+    }
+  };
+
   if (listToShow === "ranking") {
     return;
   } else if (rounds.length > 0) {
     return (
       <div className="flex w-full flex-row items-center justify-evenly gap-2">
-        <FaArrowLeft
+        <div
+          className="px-6 cursor-pointer"
           onClick={() => {
             handleChangeRound("left");
           }}
-          className={`${chooseTextCompetitionColor(competition!.name)} cursor-pointer`}
-        />
+        >
+          <FaArrowLeft
+            className={`${chooseTextCompetitionColor(competition!.name)}`}
+          />
+        </div>
 
         <div className="flex items-center justify-center">
           <button
@@ -130,7 +176,11 @@ export function SelectFixtures({
             <p
               className={`text-right text-base font-bold uppercase ${chooseTextCompetitionColor(competition!.name)}`}
             >
-              Rodada {roundSelected}
+              {handleLeaguePhaseCustom({
+                competition: competition!.name,
+                round: roundSelected,
+                showLabel: true,
+              })}
             </p>
           </button>
           <Dialog open={open} onClose={handleClose}>
@@ -151,7 +201,11 @@ export function SelectFixtures({
                     {data.map((data) => {
                       return (
                         <option key={uuidV4()} value={data.value}>
-                          {data.label}
+                          {handleLeaguePhaseCustom({
+                            competition: competition!.name,
+                            round: +data.label,
+                            showLabel: false,
+                          })}
                         </option>
                       );
                     })}
@@ -161,12 +215,16 @@ export function SelectFixtures({
             </DialogContent>
           </Dialog>
         </div>
-        <FaArrowRight
+        <div
+          className="px-6 cursor-pointer"
           onClick={() => {
             handleChangeRound("right");
           }}
-          className={`${chooseTextCompetitionColor(competition!.name)} cursor-pointer`}
-        />
+        >
+          <FaArrowRight
+            className={`${chooseTextCompetitionColor(competition!.name)}`}
+          />
+        </div>
       </div>
     );
   }

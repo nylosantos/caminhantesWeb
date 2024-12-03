@@ -24,9 +24,7 @@ import { z } from "zod";
 import TeamResultsModal from "../components/TeamResultsModal";
 import AnotherUserGuessesModal from "../components/AnotherUserGuessesModal";
 import Standings from "../components/Standings";
-// import memoize from "memoize-one";
-// import { FixedSizeList as List, areEqual } from "react-window";
-// import { FixtureListToShow } from "../components/FixtureListToShow";
+// import Standings from "../components/Standings";
 
 export interface ParticipantsWithPoints {
   participant: Doc<"users">;
@@ -132,7 +130,7 @@ export default function PoolPage({ userData }: PageProps) {
       getLeagueAndParticipantsData();
       setLoading(false);
     } else setLoading(true);
-  }, [competition, userData]);
+  }, [competition, dbUsersData,userData]);
 
   const [participantsData, setParticipantsData] =
     useState<ParticipantsWithPoints[]>();
@@ -604,7 +602,8 @@ export default function PoolPage({ userData }: PageProps) {
   function handleClickCompetition(competitionNamePicked: string) {
     if (
       competition!.name === "Premier League" ||
-      competition!.name === "Champions League"
+      competition!.name === "Champions League" ||
+      competition!.name === "WSL"
     ) {
       setCompetitionName(competitionNamePicked);
       handleOpenTable();
@@ -631,7 +630,13 @@ export default function PoolPage({ userData }: PageProps) {
       <Standings
         competitionName={competitionName}
         handleCloseTableModal={handleCloseTable}
-        leagueId={competition!.name === "Premier League" ? 47 : 42}
+        leagueId={
+          competition!.name === "Premier League"
+            ? 47
+            : competition!.name === "Champions League"
+              ? 42
+              : 9227
+        }
         openTableModal={openTable}
       />
       <>

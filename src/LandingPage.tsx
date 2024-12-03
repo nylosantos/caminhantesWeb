@@ -18,6 +18,7 @@ import ModalInfo from "./components/ModalInfo";
 import { UpdatePoints } from "./screens/UpdatePoints";
 import Notification from "./components/Notification";
 import { UpdateResults } from "./screens/UpdateResults";
+import { LeagueCode } from "./screens/LeagueCode";
 
 export type PageProps = {
   userData:
@@ -82,6 +83,8 @@ function LandingPage() {
       return <UpdatePoints />;
     } else if (pageTo.show === "updateLeagueResults") {
       return <UpdateResults />;
+    } else if (pageTo.show === "leagueCode") {
+      return <LeagueCode />;
     }
   }
 

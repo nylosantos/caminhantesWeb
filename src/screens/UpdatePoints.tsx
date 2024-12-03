@@ -123,10 +123,6 @@ export function UpdatePoints() {
               const userData = dbUsersData!.find(
                 (dbUserData) => dbUserData._id === participant
               );
-              // const userData = await convex.query(api.functions.findUser, {
-              //   id: participant!,
-              //   type: "_idDb",
-              // });
               if (userData && userData.leagues) {
                 // FINDING LEAGUE INDEX
                 const foundedLeagueIndex = userData.leagues.findIndex(
@@ -138,87 +134,77 @@ export function UpdatePoints() {
                     userData.leagues[foundedLeagueIndex];
 
                   userCompetitionGuesses.guesses.forEach((guess) => {
-                    if (
-                      guess.HomeTeamScore !== null &&
-                      guess.AwayTeamScore !== null
-                    ) {
-                      const foundedCompetitionGameIndex =
-                        dbLeagueData.games.findIndex(
-                          (game) =>
-                            game.MatchNumber === guess.MatchNumber &&
-                            new Date(game.DateUtc) < new Date()
-                            // &&
-                            // new Date(game.DateUtc) >
-                            //   new Date(dbLeagueData.lastUpdatedPointsTime)
-                        );
-                      if (foundedCompetitionGameIndex !== -1) {
-                        const officialHomeResult =
-                          dbLeagueData.games[foundedCompetitionGameIndex]
-                            .HomeTeamScore;
-                        const officialAwayResult =
-                          dbLeagueData.games[foundedCompetitionGameIndex]
-                            .AwayTeamScore;
-                        const userGuessHomeResult = guess.HomeTeamScore;
-                        const userGuessAwayResult = guess.AwayTeamScore;
+                    const foundedCompetitionGameIndex =
+                      dbLeagueData.games.findIndex(
+                        (game) => game.MatchNumber === guess.MatchNumber
+                      );
+                    if (foundedCompetitionGameIndex !== -1) {
+                      const officialHomeResult =
+                        dbLeagueData.games[foundedCompetitionGameIndex]
+                          .HomeTeamScore;
+                      const officialAwayResult =
+                        dbLeagueData.games[foundedCompetitionGameIndex]
+                          .AwayTeamScore;
+                      const userGuessHomeResult = guess.HomeTeamScore;
+                      const userGuessAwayResult = guess.AwayTeamScore;
+                      if (
+                        officialHomeResult !== null &&
+                        officialAwayResult !== null
+                      ) {
                         if (
-                          officialHomeResult !== null &&
-                          officialAwayResult !== null
+                          userGuessHomeResult !== null &&
+                          userGuessAwayResult !== null
                         ) {
                           if (
-                            userGuessHomeResult !== null &&
-                            userGuessAwayResult !== null
+                            officialHomeResult === userGuessHomeResult &&
+                            officialAwayResult === userGuessAwayResult
                           ) {
-                            if (
-                              officialHomeResult === userGuessHomeResult &&
-                              officialAwayResult === userGuessAwayResult
-                            ) {
-                              guess.points = 3;
-                            } else {
-                              const officialResultSum =
-                                officialHomeResult - officialAwayResult;
-                              const userGuessSum =
-                                userGuessHomeResult - userGuessAwayResult;
-
-                              if (officialResultSum > 0 && userGuessSum > 0) {
-                                if (
-                                  officialHomeResult === userGuessHomeResult ||
-                                  officialAwayResult === userGuessAwayResult
-                                ) {
-                                  guess.points = 2;
-                                } else {
-                                  guess.points = 1;
-                                }
-                              } else if (
-                                officialResultSum < 0 &&
-                                userGuessSum < 0
-                              ) {
-                                if (
-                                  officialHomeResult === userGuessHomeResult ||
-                                  officialAwayResult === userGuessAwayResult
-                                ) {
-                                  guess.points = 2;
-                                } else {
-                                  guess.points = 1;
-                                }
-                              } else if (
-                                officialResultSum === 0 &&
-                                userGuessSum === 0
-                              ) {
-                                if (
-                                  officialHomeResult === userGuessHomeResult ||
-                                  officialAwayResult === userGuessAwayResult
-                                ) {
-                                  guess.points = 2;
-                                } else {
-                                  guess.points = 1;
-                                }
-                              } else {
-                                guess.points = 0;
-                              }
-                            }
+                            guess.points = 3;
                           } else {
-                            guess.points = 0;
+                            const officialResultSum =
+                              officialHomeResult - officialAwayResult;
+                            const userGuessSum =
+                              userGuessHomeResult - userGuessAwayResult;
+
+                            if (officialResultSum > 0 && userGuessSum > 0) {
+                              if (
+                                officialHomeResult === userGuessHomeResult ||
+                                officialAwayResult === userGuessAwayResult
+                              ) {
+                                guess.points = 2;
+                              } else {
+                                guess.points = 1;
+                              }
+                            } else if (
+                              officialResultSum < 0 &&
+                              userGuessSum < 0
+                            ) {
+                              if (
+                                officialHomeResult === userGuessHomeResult ||
+                                officialAwayResult === userGuessAwayResult
+                              ) {
+                                guess.points = 2;
+                              } else {
+                                guess.points = 1;
+                              }
+                            } else if (
+                              officialResultSum === 0 &&
+                              userGuessSum === 0
+                            ) {
+                              if (
+                                officialHomeResult === userGuessHomeResult ||
+                                officialAwayResult === userGuessAwayResult
+                              ) {
+                                guess.points = 2;
+                              } else {
+                                guess.points = 1;
+                              }
+                            } else {
+                              guess.points = 0;
+                            }
                           }
+                        } else {
+                          guess.points = 0;
                         }
                       }
                     }

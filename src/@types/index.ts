@@ -259,7 +259,8 @@ export type SetPageProps = {
     | "createLeague"
     | "deleteLeague"
     | "updateLeaguePoints"
-    | "updateLeagueResults";
+    | "updateLeagueResults"
+    | "leagueCode";
   show:
     | "home"
     | "settings"
@@ -269,7 +270,8 @@ export type SetPageProps = {
     | "createLeague"
     | "deleteLeague"
     | "updateLeaguePoints"
-    | "updateLeagueResults";
+    | "updateLeagueResults"
+    | "leagueCode";
 };
 
 // -------------------------- POOL PAGE TYPES --------------- //
@@ -360,6 +362,9 @@ export type GlobalDataContextType = {
   setOpenModal: (value: boolean) => void;
   setPage: (newPage: SetPageProps) => void;
   setRoundSelected: (round: number | undefined) => void;
+  updateOneLeagueAllUsersPoints: (
+    leagueDetails: Doc<"leagues"> | undefined
+  ) => Promise<string | number>;
   toggleGuessesResultsRanking: (
     option: "guesses" | "results" | "ranking"
   ) => void;
@@ -415,11 +420,6 @@ export type UsersTableProps = {
   timestamp: "serverTimestamp()"; // DATE????
   leagues: UsersLeaguesTableProps[];
 };
-
-// export type DbAdminProps = {
-//   leagues: LeaguesTableProps[];
-//   users: UsersTableProps[];
-// };
 
 export interface MatchesProps {
   status: string;

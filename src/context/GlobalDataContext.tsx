@@ -716,9 +716,13 @@ export const GlobalDataProvider = ({ children }: PostsContextProviderProps) => {
       return "Man Utd";
     } else if (clubName === "Manchester City") {
       return "Man City";
+    } else if (clubName === "West Ham United") {
+      return "West Ham";
+    } else if (clubName === "Leicester City") {
+      return "Leicester";
     } else if (clubName === "Nottm Forest") {
       return "Nott'm Forest";
-    } else if (clubName === "Tottenham") {
+    } else if (clubName === "Tottenham" || clubName === "Tottenham Hotspur") {
       return "Spurs";
     } else if (clubName === "Borussia Dortmund" || clubName === "Dortmund") {
       return "B. Dortmund";
@@ -954,6 +958,187 @@ export const GlobalDataProvider = ({ children }: PostsContextProviderProps) => {
     }
   }
 
+ async function updateOneLeagueAllUsersPoints(leagueDetails: Doc<"leagues"> | undefined){
+  if (leagueDetails) {
+    if (dbLeaguesData && dbLeaguesData.length > 0) {
+      const foundedLeagueToUpdatePointsIndex = dbLeaguesData.findIndex(
+        (league) => league._id === leagueDetails._id
+      );
+
+      if (foundedLeagueToUpdatePointsIndex !== -1) {
+        const dbLeagueData = dbLeaguesData[foundedLeagueToUpdatePointsIndex];
+
+        const leagueParticipants = dbLeagueData.participants;
+
+        if (leagueParticipants.length > 0) {
+          leagueParticipants.map(async (participant) => {
+            const userData = dbUsersData!.find(
+              (dbUserData) => dbUserData._id === participant
+            );
+            if (userData && userData.leagues) {
+              // FINDING LEAGUE INDEX
+              const foundedLeagueIndex = userData.leagues.findIndex(
+                (userLeague) => userLeague.id === dbLeagueData._id
+              );
+
+              if (foundedLeagueIndex !== -1) {
+                const userCompetitionGuesses =
+                  userData.leagues[foundedLeagueIndex];
+
+                userCompetitionGuesses.guesses.forEach((guess) => {
+                  const foundedCompetitionGameIndex =
+                    dbLeagueData.games.findIndex(
+                      (game) => game.MatchNumber === guess.MatchNumber
+                    );
+                  if (foundedCompetitionGameIndex !== -1) {
+                    const officialHomeResult =
+                      dbLeagueData.games[foundedCompetitionGameIndex]
+                        .HomeTeamScore;
+                    const officialAwayResult =
+                      dbLeagueData.games[foundedCompetitionGameIndex]
+                        .AwayTeamScore;
+                    const userGuessHomeResult = guess.HomeTeamScore;
+                    const userGuessAwayResult = guess.AwayTeamScore;
+                    if (
+                      officialHomeResult !== null &&
+                      officialAwayResult !== null
+                    ) {
+                      if (
+                        userGuessHomeResult !== null &&
+                        userGuessAwayResult !== null
+                      ) {
+                        if (
+                          officialHomeResult === userGuessHomeResult &&
+                          officialAwayResult === userGuessAwayResult
+                        ) {
+                          guess.points = 3;
+                        } else {
+                          const officialResultSum =
+                            officialHomeResult - officialAwayResult;
+                          const userGuessSum =
+                            userGuessHomeResult - userGuessAwayResult;
+
+                          if (officialResultSum > 0 && userGuessSum > 0) {
+                            if (
+                              officialHomeResult === userGuessHomeResult ||
+                              officialAwayResult === userGuessAwayResult
+                            ) {
+                              guess.points = 2;
+                            } else {
+                              guess.points = 1;
+                            }
+                          } else if (
+                            officialResultSum < 0 &&
+                            userGuessSum < 0
+                          ) {
+                            if (
+                              officialHomeResult === userGuessHomeResult ||
+                              officialAwayResult === userGuessAwayResult
+                            ) {
+                              guess.points = 2;
+                            } else {
+                              guess.points = 1;
+                            }
+                          } else if (
+                            officialResultSum === 0 &&
+                            userGuessSum === 0
+                          ) {
+                            if (
+                              officialHomeResult === userGuessHomeResult ||
+                              officialAwayResult === userGuessAwayResult
+                            ) {
+                              guess.points = 2;
+                            } else {
+                              guess.points = 1;
+                            }
+                          } else {
+                            guess.points = 0;
+                          }
+                        }
+                      } else {
+                        guess.points = 0;
+                      }
+                    }
+                  }
+                });
+
+                let totalPointsSum = 0;
+                userCompetitionGuesses.guesses.map((guess) => {
+                  totalPointsSum = totalPointsSum + guess.points;
+                });
+
+                await convex
+                  .mutation(api.functions.updateDbUserGuesses, {
+                    league: {
+                      id: dbLeagueData._id,
+                      guesses: userCompetitionGuesses.guesses,
+                      totalPoints: totalPointsSum,
+                    },
+                    userId: userData!._id,
+                  })
+                  .catch((error) => {
+                    setIsSubmitting(false);
+                    console.log(
+                      "Erro ao atualizar os pontos no banco de dados: ",
+                      error
+                    );
+                    return toast.error("Ocorreu um erro... 🤯");
+                  });
+              }
+            } else {
+              setIsSubmitting(false);
+              console.log(
+                "Algum erro com ao encontrar o usuário, ou as ligas do usuário, no banco de dados (userData && userData.leagues): ",
+                userData
+              );
+              return toast.error(
+                "Usuário não encontrado no banco de dados... 🤯"
+              );
+            }
+          });
+          await convex.mutation(api.functions.updateLeagueLastUpdateTime, {
+            leagueId: dbLeagueData._id,
+          });
+          setIsSubmitting(false);
+          return toast.success(
+            `Resultados de ${leagueDetails.name} atualizados, confira os pontos! 👌`
+          );
+        } else {
+          setIsSubmitting(false);
+          console.log(
+            "Não consta nenhum participante na liga (leagueParticipants): ",
+            leagueParticipants
+          );
+          return toast.warning("Liga não tem nenhum participante... 🤔");
+        }
+      } else {
+        setIsSubmitting(false);
+        console.log(
+          "Algum erro com ao encontrar o index da liga procurando no banco de dados (foundedLeagueToUpdatePointsIndex): ",
+          foundedLeagueToUpdatePointsIndex
+        );
+        return toast.error("Liga não encontrada no banco de dados... 🤯");
+      }
+    } else {
+      setIsSubmitting(false);
+      console.log(
+        "Algum erro com o estado que contém os detalhes da liga vindos do banco de dados (dbLeagues): ",
+        dbLeaguesData
+      );
+      return toast.error(
+        "Erro ao obter os detalhes da liga no banco de dados... 🤯"
+      );
+    }
+  } else {
+    setIsSubmitting(false);
+    console.log(
+      "Algum erro com o estado que contém os detalhes da liga (leagueDetails): ",
+      leagueDetails
+    );
+    return toast.error("Erro ao obter os detalhes da liga... 🤯");
+  }
+ }
+
   return (
     <GlobalDataContext.Provider
       value={{
@@ -1013,6 +1198,7 @@ export const GlobalDataProvider = ({ children }: PostsContextProviderProps) => {
         setPage,
         setRoundSelected,
         toggleGuessesResultsRanking,
+        updateOneLeagueAllUsersPoints,
         updateStateGuesses,
         updatePoints,
       }}
